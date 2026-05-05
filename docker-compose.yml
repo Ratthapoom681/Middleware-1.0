@@ -49,3 +49,9 @@ services:
     depends_on:
       - backend
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
