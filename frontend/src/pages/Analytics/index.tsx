@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChartCard } from "../../components/ChartCard";
 import { DataTable } from "../../components/DataTable";
 import { StatCard } from "../../components/StatCard";
+import { ExportPdfButton } from "../../components/ExportPdfButton";
 
 /* ── Mock KPI ── */
 const kpis = [
@@ -146,11 +147,24 @@ export function Analytics() {
           <p className="page-subtitle">Security posture trends, team performance, and vulnerability aging</p>
         </div>
         <div className="page-actions">
-          <button className="button button--ghost">
-            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            Export CSV
-          </button>
-          <button className="button button--primary">Generate Report</button>
+          <ExportPdfButton
+            reportTitle="Executive Analytics Summary"
+            filename="analytics-summary"
+            targetId="analytics-content"
+            label="Generate Report"
+            stats={kpis.slice(0, 2).map(k => ({ label: k.label, value: k.value }))}
+          />
+          <ExportPdfButton
+            reportTitle="Deep Insights Analytics Report"
+            filename="analytics-report"
+            targetId="analytics-content"
+            label="Export PDF"
+            stats={kpis.map(k => ({ label: k.label, value: k.value }))}
+            tableData={{
+              head: [["Title", "Source", "Severity", "Age", "Owner", "Score"]],
+              body: topIssues.map(i => [i.title, i.source, i.severity, i.age, i.owner, i.score])
+            }}
+          />
         </div>
       </div>
 
@@ -186,6 +200,7 @@ export function Analytics() {
         </div>
       </div>
 
+      <div id="analytics-content" className="page-stack" style={{ gap: "1.5rem" }}>
       {/* Charts Row 1 */}
       <div className="charts-grid-2">
         <ChartCard title="Monthly Alert Trend" subtitle="Breakdown by source — last 6 months"
@@ -257,6 +272,7 @@ export function Analytics() {
           getRowKey={(r) => r.id}
           emptyMessage="No issues found."
         />
+      </div>
       </div>
     </div>
   );

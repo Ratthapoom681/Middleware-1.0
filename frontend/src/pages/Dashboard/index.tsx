@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChartCard } from "../../components/ChartCard";
 import { DataTable } from "../../components/DataTable";
 import { StatCard } from "../../components/StatCard";
+import { ExportPdfButton } from "../../components/ExportPdfButton";
 
 /* ── Mock data ── */
 const summaryCards = [
@@ -173,10 +174,16 @@ export function Dashboard() {
           <button className="button button--secondary" disabled={syncing} onClick={handleSync}>
             {syncing ? "Syncing…" : "⚡ Sync Now"}
           </button>
-          <button className="button button--primary">
-            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            Export
-          </button>
+          <ExportPdfButton
+            reportTitle="Dashboard Overview Report"
+            filename="dashboard-report"
+            targetId="dashboard-charts"
+            stats={summaryCards.map(c => ({ label: c.label, value: c.value }))}
+            tableData={{
+              head: [["Source", "Title", "Severity", "Status", "Updated"]],
+              body: recentActivity.map(r => [r.source, r.title, r.severity, r.status, r.updated])
+            }}
+          />
         </div>
       </div>
 
@@ -188,7 +195,7 @@ export function Dashboard() {
       </div>
 
       {/* Charts Row */}
-      <div className="charts-grid">
+      <div className="charts-grid" id="dashboard-charts">
         <ChartCard title="Alerts Trend" subtitle="Monthly alert volume — last 12 months">
           <LineChart values={alertTrend} labels={trendLabels} />
         </ChartCard>
@@ -210,9 +217,17 @@ export function Dashboard() {
             <p className="panel-subtitle">Latest security events across all sources</p>
           </div>
           <div className="quick-actions">
-            <button className="button button--ghost" style={{ fontSize: "0.78rem", padding: "0.4rem 0.8rem" }}>
-              Generate Report
-            </button>
+            <ExportPdfButton
+              reportTitle="Recent Activity Detailed Report"
+              filename="recent-activity-report"
+              targetId="dashboard-charts"
+              label="Generate Report"
+              stats={summaryCards.slice(0,3).map(c => ({ label: c.label, value: c.value }))}
+              tableData={{
+                head: [["Source", "Title", "Severity", "Status"]],
+                body: recentActivity.map(r => [r.source, r.title, r.severity, r.status])
+              }}
+            />
             <button className="button button--secondary" style={{ fontSize: "0.78rem", padding: "0.4rem 0.8rem" }}>
               View All →
             </button>
