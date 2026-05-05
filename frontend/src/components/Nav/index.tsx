@@ -1,24 +1,28 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+
+const navClassName = ({ isActive }: { isActive: boolean }) => (isActive ? "nav-link active" : "nav-link");
 
 export function Nav() {
   return (
-    <header
-      style={{
-        alignItems: "center",
-        borderBottom: "1px solid #e5e7eb",
-        display: "flex",
-        gap: 16,
-        height: 64,
-        padding: "0 24px"
-      }}
-    >
-      <strong>My App</strong>
-      <nav style={{ display: "flex", gap: 12 }}>
-        <Link to="/">Dashboard</Link>
-        <Link to="/feature-a">Feature A</Link>
-        <Link to="/feature-b">Feature B</Link>
+    <header className="topbar">
+      <div>
+        <p className="eyebrow">Middleware 1.0</p>
+        <strong>Service Console</strong>
+      </div>
+      <nav className="topbar-nav">
+        <NavLink className={navClassName} to="/">
+          Dashboard
+        </NavLink>
+        <NavLink className={navClassName} to="/search">
+          Search
+        </NavLink>
+        <NavLink className={navClassName} to="/feature-a">
+          Feature A
+        </NavLink>
+        <NavLink className={navClassName} to="/feature-b">
+          Feature B
+        </NavLink>
       </nav>
     </header>
   );
 }
-

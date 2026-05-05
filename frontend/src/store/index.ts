@@ -1,16 +1,10 @@
 import { create } from "zustand";
+import { createSearchSlice, type SearchSlice } from "./search";
+import { createUiSlice, type UiSlice } from "./ui";
 
-type AppState = {
-  sidebarOpen: boolean;
-  theme: "light" | "dark";
-  setTheme: (theme: AppState["theme"]) => void;
-  toggleSidebar: () => void;
-};
+export type AppStore = SearchSlice & UiSlice;
 
-export const useAppStore = create<AppState>((set) => ({
-  sidebarOpen: true,
-  theme: "light",
-  setTheme: (theme) => set({ theme }),
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen }))
+export const useAppStore = create<AppStore>()((...args) => ({
+  ...createUiSlice(...args),
+  ...createSearchSlice(...args)
 }));
-

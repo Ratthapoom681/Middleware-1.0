@@ -4,13 +4,16 @@ type FetchState<T> = {
   data: T | null;
   error: string | null;
   loading: boolean;
+  refetch: () => void;
 };
 
-export function useFetch<T>(url: string, options?: RequestInit): FetchState<T> {
+export function useFetch<T>(url: string, options?: RequestInit, dependencies: unknown[] = []): FetchState<T> {
+  const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<FetchState<T>>({
     data: null,
     error: null,
-    loading: true
+    loading: true,
+    refetch: () => setReloadToken((value) => value + 1)
   });
 
   useEffect(() => {
@@ -27,21 +30,30 @@ export function useFetch<T>(url: string, options?: RequestInit): FetchState<T> {
         }
 
         const data = (await response.json()) as T;
-        setState({ data, error: null, loading: false });
+        setState({
+          data,
+          error: null,
+          loading: false,
+          refetch: () => setReloadToken((value) => value + 1)
+        });
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
-        setState({ data: null, error: error instanceof Error ? error.message : "Unknown error", loading: false });
+        setState({
+          data: null,
+          error: error instanceof Error ? error.message : "Unknown error",
+          loading: false,
+          refetch: () => setReloadToken((value) => value + 1)
+        });
       }
     }
 
     fetchData();
 
     return () => controller.abort();
-  }, [url]);
+  }, [reloadToken, url, ...dependencies]);
 
   return state;
 }
-

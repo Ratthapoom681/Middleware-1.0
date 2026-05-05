@@ -3,6 +3,14 @@ node_modules/
 dist/
 build/
 .vite/
+data/*
+!data/.gitkeep
+!data/postgres/
+!data/postgres/.gitkeep
+!data/elasticsearch/
+!data/elasticsearch/.gitkeep
+!data/redis/
+!data/redis/.gitkeep
 
 __pycache__/
 *.py[cod]
@@ -14,4 +22,3 @@ venv/
 
 *.sqlite
 *.sqlite3
-

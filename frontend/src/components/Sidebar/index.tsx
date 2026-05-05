@@ -1,5 +1,7 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useAppStore } from "../../store";
+
+const navClassName = ({ isActive }: { isActive: boolean }) => (isActive ? "nav-link active" : "nav-link");
 
 export function Sidebar() {
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
@@ -9,19 +11,22 @@ export function Sidebar() {
   }
 
   return (
-    <aside
-      style={{
-        borderRight: "1px solid #e5e7eb",
-        minWidth: 220,
-        padding: 24
-      }}
-    >
-      <nav style={{ display: "grid", gap: 10 }}>
-        <Link to="/">Overview</Link>
-        <Link to="/feature-a">Feature A</Link>
-        <Link to="/feature-b">Feature B</Link>
+    <aside className="sidebar">
+      <p className="sidebar-title">Navigate</p>
+      <nav className="sidebar-nav">
+        <NavLink className={navClassName} to="/">
+          Overview
+        </NavLink>
+        <NavLink className={navClassName} to="/search">
+          Search Index
+        </NavLink>
+        <NavLink className={navClassName} to="/feature-a">
+          Feature A
+        </NavLink>
+        <NavLink className={navClassName} to="/feature-b">
+          Feature B
+        </NavLink>
       </nav>
     </aside>
   );
 }
-
