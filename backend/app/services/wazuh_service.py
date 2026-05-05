@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.wazuh import WazuhAlert
 from app.services.index_service import sync_wazuh_alert
+from app.services.detection_service import evaluate_detections
 
 
 def create_wazuh_alert(db: Session, alert_payload: dict[str, Any], es: Optional[Elasticsearch] = None) -> WazuhAlert:
@@ -13,6 +14,7 @@ def create_wazuh_alert(db: Session, alert_payload: dict[str, Any], es: Optional[
     Creates a new WazuhAlert record in the database.
     Extracts key fields for indexing while preserving the full original payload.
     Synchronizes with Elasticsearch if a client is provided.
+    Evaluates detections against the new alert.
     """
     # Extract timestamp
     timestamp_str = alert_payload.get("timestamp")
@@ -55,5 +57,12 @@ def create_wazuh_alert(db: Session, alert_payload: dict[str, Any], es: Optional[
         except Exception:
             # We don't want to fail the whole ingestion if ES indexing fails
             pass
+            
+    # Run detections
+    try:
+        evaluate_detections(db, db_alert)
+    except Exception as e:
+        # Avoid failing the ingestion if detection evaluation fails
+        print(f"Detection evaluation failed: {e}")
             
     return db_alert
