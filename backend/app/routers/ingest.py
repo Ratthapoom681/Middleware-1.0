@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 
 from app.db.elasticsearch.client import es_client
@@ -22,7 +22,7 @@ def get_db():
 
 @router.post("/wazuh", status_code=status.HTTP_201_CREATED)
 async def ingest_wazuh_alert(
-    payload: dict[str, Any], 
+    payload: dict[str, Any] = Body(...), 
     db: Session = Depends(get_db)
 ):
     """
