@@ -1,6 +1,5 @@
 import { Route, Routes } from "react-router-dom";
 import { Nav } from "./components/Nav";
-import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./pages/Dashboard";
 import { Analytics } from "./pages/Analytics";
 import { Settings } from "./pages/Settings";
@@ -9,7 +8,6 @@ import { FeatureA } from "./pages/FeatureA";
 import { FeatureB } from "./pages/FeatureB";
 import { NotFound } from "./pages/NotFound";
 import { Search } from "./pages/Search";
-import { Settings } from "./pages/Settings";
 
 export default function App() {
   return (
