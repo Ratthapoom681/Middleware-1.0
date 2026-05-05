@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, cast, String
 
 from app.models.wazuh import WazuhAlert
 from app.models.config import DetectionConfig
@@ -59,7 +59,7 @@ def evaluate_detections(db: Session, current_alert: WazuhAlert):
         count = db.query(WazuhAlert).filter(
             WazuhAlert.timestamp >= time_limit,
             WazuhAlert.timestamp < current_time,
-            WazuhAlert.full_payload["data"]["srcip"].astext == srcip
+            cast(WazuhAlert.full_payload["data"]["srcip"], String) == srcip
         ).count()
         
         # We add 1 for the current alert
@@ -98,9 +98,9 @@ def evaluate_detections(db: Session, current_alert: WazuhAlert):
         previous_login = db.query(WazuhAlert).filter(
             WazuhAlert.timestamp >= time_limit,
             WazuhAlert.timestamp < current_time,
-            WazuhAlert.full_payload["data"]["user"].astext == user,
-            WazuhAlert.full_payload["data"]["geoip"]["country_name"].astext != country_name,
-            WazuhAlert.full_payload["data"]["geoip"]["country_name"].astext.isnot(None)
+            cast(WazuhAlert.full_payload["data"]["user"], String) == user,
+            cast(WazuhAlert.full_payload["data"]["geoip"]["country_name"], String) != country_name,
+            cast(WazuhAlert.full_payload["data"]["geoip"]["country_name"], String).isnot(None)
         ).first()
         
         if previous_login:
@@ -121,11 +121,11 @@ def evaluate_detections(db: Session, current_alert: WazuhAlert):
         time_limit = current_time - timedelta(seconds=port_scan_timeframe_sec)
         
         # Count distinct destination ports for this source IP within the timeframe
-        distinct_ports = db.query(func.count(func.distinct(WazuhAlert.full_payload["data"]["dstport"].astext))).filter(
+        distinct_ports = db.query(func.count(func.distinct(cast(WazuhAlert.full_payload["data"]["dstport"], String)))).filter(
             WazuhAlert.timestamp >= time_limit,
             WazuhAlert.timestamp <= current_time,
-            WazuhAlert.full_payload["data"]["srcip"].astext == srcip,
-            WazuhAlert.full_payload["data"]["dstport"].astext.isnot(None)
+            cast(WazuhAlert.full_payload["data"]["srcip"], String) == srcip,
+            cast(WazuhAlert.full_payload["data"]["dstport"], String).isnot(None)
         ).scalar() or 0
         
         if distinct_ports >= port_scan_threshold:
