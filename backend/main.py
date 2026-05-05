@@ -44,21 +44,24 @@ async def lifespan(_: FastAPI):
         db = SessionLocal()
         try:
             seed_features(db)
-            # ... rest of the logic
 
-        try:
-            ensure_feature_index(es_client)
-            reindex_features(db, es_client)
-            
-            ensure_wazuh_index(es_client)
-            reindex_wazuh_alerts(db, es_client)
-        except Exception:
-            # Keep the API available even if Elasticsearch is still booting.
-            pass
+            try:
+                ensure_feature_index(es_client)
+                reindex_features(db, es_client)
+                
+                ensure_wazuh_index(es_client)
+                reindex_wazuh_alerts(db, es_client)
+            except Exception:
+                # Keep the API available even if Elasticsearch is still booting.
+                pass
 
+            yield
+        finally:
+            db.close()
+            es_client.close()
+    else:
+        # If we got here without raising, but db_ready is False (shouldn't happen), yield anyway
         yield
-    finally:
-        db.close()
         es_client.close()
 
 
