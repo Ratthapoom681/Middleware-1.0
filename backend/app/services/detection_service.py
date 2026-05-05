@@ -1,21 +1,27 @@
 from datetime import datetime, timedelta, timezone
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, String
 
+logger = logging.getLogger(__name__)
+
 from app.models.wazuh import WazuhAlert
-from app.models.config import DetectionConfig
+from app.models.config import DetectionConfig, RedmineConfig
 from app.models.detection import DetectionAlert
+from app.services.redmine_service import create_redmine_issue
 
 def evaluate_detections(db: Session, current_alert: WazuhAlert):
     """
     Evaluates the incoming WazuhAlert against the 4 configured detection use cases.
     If a use case triggers, a DetectionAlert is created.
     """
-    # Get config (fallback to defaults if not found)
+    alerts_triggered = 0
+    
+    # Get detection config
     config_row = db.query(DetectionConfig).first()
     settings = config_row.settings if config_row else {}
     
-    # Extract dynamic settings with defaults
+    # Extract detection-specific settings with defaults
     brute_force_timeframe_sec = settings.get("brute_force_timeframe_sec", 60)
     brute_force_threshold = settings.get("brute_force_threshold", 5)
     abnormal_ports = settings.get("abnormal_ports", [4444, 1337])
@@ -73,6 +79,7 @@ def evaluate_detections(db: Session, current_alert: WazuhAlert):
                 source_ip=srcip,
                 details={"srcip": srcip, "count": count + 1, "threshold": brute_force_threshold}
             )
+            alerts_triggered += 1
 
     # --- 2. Abnormal Network Connection ---
     # Trigger condition: dstport in abnormal_ports list
@@ -86,6 +93,7 @@ def evaluate_detections(db: Session, current_alert: WazuhAlert):
             source_ip=srcip,
             details={"srcip": srcip, "dstip": dstip, "dstport": dstport_int, "protocol": data.get("protocol")}
         )
+        alerts_triggered += 1
 
     # --- 3. Impossible Travel ---
     # Trigger condition: Same user logs in from two different countries within timeframe
@@ -114,6 +122,7 @@ def evaluate_detections(db: Session, current_alert: WazuhAlert):
                 source_ip=srcip,
                 details={"user": user, "current_country": country_name, "previous_country": prev_country, "srcip": srcip}
             )
+            alerts_triggered += 1
 
     # --- 4. Port Scan Detection ---
     # Trigger condition: Connections to multiple ports from same srcip within short timeframe
@@ -138,11 +147,15 @@ def evaluate_detections(db: Session, current_alert: WazuhAlert):
                 source_ip=srcip,
                 details={"srcip": srcip, "distinct_ports": distinct_ports, "threshold": port_scan_threshold}
             )
+            alerts_triggered += 1
 
+    if alerts_triggered == 0:
+        logger.info(f"Evaluated Wazuh alert {current_alert.id} against detection rules: No suspicious activity found.")
+    else:
+        logger.warning(f"Evaluated Wazuh alert {current_alert.id}: Triggered {alerts_triggered} detection(s)!")
 
 def _create_alert(db: Session, title: str, description: str, use_case: str, severity: str, source_ip: str, details: dict):
-    # Optional: check if an identical alert was generated very recently to prevent spam
-    # For now, we just insert.
+    # Create the alert in our local database
     new_alert = DetectionAlert(
         title=title,
         description=description,
@@ -153,3 +166,26 @@ def _create_alert(db: Session, title: str, description: str, use_case: str, seve
     )
     db.add(new_alert)
     db.commit()
+    db.refresh(new_alert)
+
+    # Check for Redmine integration in separate config
+    redmine_config = db.query(RedmineConfig).first()
+    
+    if redmine_config and redmine_config.enabled:
+        # Prepare alert data for Redmine
+        alert_data = {
+            "title": title,
+            "description": description,
+            "use_case": use_case,
+            "severity": severity,
+            "source_ip": source_ip,
+            "details": details
+        }
+        # Convert model to dict for the service
+        config_dict = {
+            "redmine_url": redmine_config.url,
+            "redmine_api_key": redmine_config.api_key,
+            "redmine_project_id": redmine_config.project_id,
+            "redmine_tracker_id": redmine_config.tracker_id
+        }
+        create_redmine_issue(config_dict, alert_data)

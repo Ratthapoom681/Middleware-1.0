@@ -1,9 +1,10 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, Body
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.postgres.session import SessionLocal
-from app.models.config import DetectionConfig
+from app.models.config import DetectionConfig, RedmineConfig
 
 router = APIRouter()
 
@@ -14,6 +15,8 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# --- Detection Config Endpoints ---
 
 @router.get("/detection", response_model=Dict[str, Any])
 def get_detection_config(db: Session = Depends(get_db)):
@@ -39,15 +42,12 @@ def get_detection_config(db: Session = Depends(get_db)):
 def update_detection_config(payload: Dict[str, Any] = Body(...), db: Session = Depends(get_db)):
     """
     Update the dynamic detection configuration.
-    Accepts an arbitrary JSON object to add or update configuration keys.
     """
     config = db.query(DetectionConfig).first()
     if not config:
         config = DetectionConfig(settings={})
         db.add(config)
         
-    # We update the settings dictionary with the new payload.
-    # If the user wants to merge instead of replace, we do:
     current_settings = dict(config.settings)
     current_settings.update(payload)
     config.settings = current_settings
@@ -55,3 +55,48 @@ def update_detection_config(payload: Dict[str, Any] = Body(...), db: Session = D
     db.commit()
     db.refresh(config)
     return config.settings
+
+# --- Redmine Config Endpoints ---
+
+class RedmineConfigSchema(BaseModel):
+    enabled: bool
+    url: str
+    api_key: str
+    project_id: str
+    tracker_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+@router.get("/redmine", response_model=RedmineConfigSchema)
+def get_redmine_config(db: Session = Depends(get_db)):
+    """
+    Get the global Redmine integration configuration.
+    """
+    config = db.query(RedmineConfig).first()
+    if not config:
+        config = RedmineConfig()
+        db.add(config)
+        db.commit()
+        db.refresh(config)
+    return config
+
+@router.put("/redmine", response_model=RedmineConfigSchema)
+def update_redmine_config(payload: RedmineConfigSchema, db: Session = Depends(get_db)):
+    """
+    Update the global Redmine integration configuration.
+    """
+    config = db.query(RedmineConfig).first()
+    if not config:
+        config = RedmineConfig()
+        db.add(config)
+        
+    config.enabled = payload.enabled
+    config.url = payload.url
+    config.api_key = payload.api_key
+    config.project_id = payload.project_id
+    config.tracker_id = payload.tracker_id
+    
+    db.commit()
+    db.refresh(config)
+    return config
