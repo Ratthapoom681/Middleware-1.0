@@ -1,21 +1,12 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+import { api } from './api';
 
 export const getDetectionConfig = async () => {
-  const response = await apiClient.get('/api/config/detection');
+  const response = await api.get('/config/detection');
   return response.data;
 };
 
 export const updateDetectionConfig = async (payload: Record<string, any>) => {
-  const response = await apiClient.put('/api/config/detection', payload);
+  const response = await api.put('/config/detection', payload);
   return response.data;
 };
 
@@ -28,11 +19,11 @@ export interface RedmineConfig {
 }
 
 export const getRedmineConfig = async (): Promise<RedmineConfig> => {
-  const response = await apiClient.get('/api/config/redmine');
+  const response = await api.get('/config/redmine');
   return response.data;
 };
 
 export const updateRedmineConfig = async (payload: RedmineConfig): Promise<RedmineConfig> => {
-  const response = await apiClient.put('/api/config/redmine', payload);
+  const response = await api.put('/config/redmine', payload);
   return response.data;
 };
