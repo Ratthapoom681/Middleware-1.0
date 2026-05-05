@@ -1133,3 +1133,64 @@ textarea { resize: vertical; }
   .log-panel { height: 400px; }
 }
 
+/* ─── Detection Rules Editor ─── */
+.rule-row {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rule-key {
+  flex: 1;
+  min-width: 0;
+}
+
+.rule-value {
+  flex: 2;
+  min-width: 0;
+}
+
+.rule-row input {
+  font-size: 0.82rem;
+  padding: 0.55rem 0.75rem;
+}
+
+/* ─── Toast Notifications ─── */
+.toast {
+  align-items: center;
+  animation: toast-in 350ms ease-out;
+  border-radius: 12px;
+  display: flex;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+}
+
+.toast-success {
+  background: rgba(34,212,122,0.1);
+  border: 1px solid rgba(34,212,122,0.25);
+  color: #22d47a;
+}
+
+.toast-error {
+  background: rgba(255,77,106,0.1);
+  border: 1px solid rgba(255,77,106,0.25);
+  color: #ff4d6a;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Responsive Rules ─── */
+@media (max-width: 600px) {
+  .rule-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rule-key, .rule-value {
+    flex: none;
+  }
+}

@@ -1,36 +1,13 @@
-import { useEffect, useState } from "react";
-
-/* ── Types ── */
-interface AppSettings {
-  wazuhUrl: string;
-  wazuhUser: string;
-  wazuhPassword: string;
-  defectdojoUrl: string;
-  defectdojoApiKey: string;
-  defectdojoProductId: string;
-  redmineUrl: string;
-  redmineApiKey: string;
-  redmineProjectId: string;
-  darkMode: boolean;
-  autoRefresh: boolean;
-  language: string;
-  timezone: string;
-  emailNotif: boolean;
-  telegramNotif: boolean;
-  slackNotif: boolean;
-  emailAddress: string;
-  telegramToken: string;
-  slackWebhook: string;
-}
-
-const DEFAULT_SETTINGS: AppSettings = {
-  wazuhUrl: "", wazuhUser: "", wazuhPassword: "",
-  defectdojoUrl: "", defectdojoApiKey: "", defectdojoProductId: "",
-  redmineUrl: "", redmineApiKey: "", redmineProjectId: "",
-  darkMode: true, autoRefresh: false, language: "en", timezone: "UTC+7",
-  emailNotif: false, telegramNotif: false, slackNotif: false,
-  emailAddress: "", telegramToken: "", slackWebhook: "",
-};
+import { useCallback, useEffect, useState } from "react";
+import {
+  getDetectionConfig,
+  updateDetectionConfig,
+  getRedmineConfig,
+  updateRedmineConfig,
+  type DetectionSettings,
+  type RedmineSettings,
+  DEFAULT_REDMINE,
+} from "../../services/config.service";
 
 /* ── Reusable field ── */
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -93,234 +70,307 @@ function PasswordField({ value, onChange, placeholder }: { value: string; onChan
   );
 }
 
-/* ── Connection test status ── */
-type TestStatus = "idle" | "testing" | "ok" | "fail";
-
-function TestBtn({ status, onClick }: { status: TestStatus; onClick: () => void }) {
-  const label = status === "testing" ? "Testing…" : status === "ok" ? "✓ Connected" : status === "fail" ? "✗ Failed" : "Test Connection";
-  const cls = status === "ok" ? "button--success" : status === "fail" ? "button--danger" : "button--ghost";
-  return (
-    <button className={`button ${cls}`} style={{ justifySelf: "start", fontSize: "0.8rem", padding: "0.5rem 1rem" }} onClick={onClick} disabled={status === "testing"}>
-      {label}
-    </button>
-  );
+/* ── Toast display ── */
+function Toast({ message, type }: { message: string; type: "success" | "error" }) {
+  return <div className={`toast ${type === "success" ? "toast-success" : "toast-error"}`}>{message}</div>;
 }
 
-/* ── Main ── */
+/* ────────────────────────────────────────────────── */
+/* ── MAIN SETTINGS COMPONENT                      ── */
+/* ────────────────────────────────────────────────── */
 export function Settings() {
-  const [settings, setSettings] = useState<AppSettings>(() => {
+  /* ── Detection rules state ── */
+  const [detectionRules, setDetectionRules] = useState<DetectionSettings>({});
+  const [detectionLoading, setDetectionLoading] = useState(true);
+  const [detectionSaving, setDetectionSaving] = useState(false);
+  const [newRuleKey, setNewRuleKey] = useState("");
+  const [newRuleValue, setNewRuleValue] = useState("");
+
+  /* ── Redmine state ── */
+  const [redmine, setRedmine] = useState<RedmineSettings>(DEFAULT_REDMINE);
+  const [redmineLoading, setRedmineLoading] = useState(true);
+  const [redmineSaving, setRedmineSaving] = useState(false);
+
+  /* ── UI state ── */
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  /* ── Fetch detection config on mount ── */
+  const fetchDetection = useCallback(async () => {
+    setDetectionLoading(true);
     try {
-      const stored = localStorage.getItem("mw_settings");
-      return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS;
+      const data = await getDetectionConfig();
+      setDetectionRules(data);
     } catch {
-      return DEFAULT_SETTINGS;
+      showToast("Failed to load detection rules", "error");
+    } finally {
+      setDetectionLoading(false);
     }
-  });
+  }, []);
 
-  const [saved, setSaved] = useState(false);
-  const [wazuhTest, setWazuhTest] = useState<TestStatus>("idle");
-  const [ddTest, setDdTest] = useState<TestStatus>("idle");
-  const [rmTest, setRmTest] = useState<TestStatus>("idle");
+  /* ── Fetch redmine config on mount ── */
+  const fetchRedmine = useCallback(async () => {
+    setRedmineLoading(true);
+    try {
+      const data = await getRedmineConfig();
+      setRedmine(data);
+    } catch {
+      showToast("Failed to load Redmine config", "error");
+    } finally {
+      setRedmineLoading(false);
+    }
+  }, []);
 
-  const set = <K extends keyof AppSettings>(key: K, val: AppSettings[K]) =>
-    setSettings((prev) => ({ ...prev, [key]: val }));
+  useEffect(() => {
+    fetchDetection();
+    fetchRedmine();
+  }, [fetchDetection, fetchRedmine]);
 
-  const toggle = (key: keyof AppSettings) =>
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
-
-  const handleSave = () => {
-    localStorage.setItem("mw_settings", JSON.stringify(settings));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
-
-  const handleExport = () => {
-    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "middleware-settings.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleReset = () => {
-    if (confirm("Reset all settings to defaults?")) {
-      setSettings(DEFAULT_SETTINGS);
-      localStorage.removeItem("mw_settings");
+  /* ── Save detection rules ── */
+  const handleSaveDetection = async () => {
+    setDetectionSaving(true);
+    try {
+      const updated = await updateDetectionConfig(detectionRules);
+      setDetectionRules(updated);
+      showToast("Detection rules saved successfully", "success");
+    } catch {
+      showToast("Failed to save detection rules", "error");
+    } finally {
+      setDetectionSaving(false);
     }
   };
 
-  const fakeTest = (setter: (s: TestStatus) => void) => {
-    setter("testing");
-    setTimeout(() => setter(Math.random() > 0.3 ? "ok" : "fail"), 1500);
+  /* ── Save redmine config ── */
+  const handleSaveRedmine = async () => {
+    if (redmine.enabled && !redmine.project_id) {
+      showToast("Project ID is required when Redmine is enabled", "error");
+      return;
+    }
+    if (redmine.enabled && redmine.url && !redmine.url.startsWith("http")) {
+      showToast("Redmine URL must start with http:// or https://", "error");
+      return;
+    }
+    setRedmineSaving(true);
+    try {
+      const updated = await updateRedmineConfig(redmine);
+      setRedmine(updated);
+      showToast("Redmine settings saved successfully", "success");
+    } catch {
+      showToast("Failed to save Redmine settings", "error");
+    } finally {
+      setRedmineSaving(false);
+    }
   };
+
+  /* ── Detection rule helpers ── */
+  const updateRuleValue = (key: string, rawValue: string) => {
+    let parsed: unknown = rawValue;
+    // Try to parse as JSON (for arrays/numbers)
+    try {
+      parsed = JSON.parse(rawValue);
+    } catch {
+      // keep as string
+    }
+    setDetectionRules((prev) => ({ ...prev, [key]: parsed }));
+  };
+
+  const deleteRule = (key: string) => {
+    setDetectionRules((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const addRule = () => {
+    const k = newRuleKey.trim();
+    if (!k) return;
+    if (k in detectionRules) {
+      showToast(`Rule "${k}" already exists`, "error");
+      return;
+    }
+    let parsed: unknown = newRuleValue;
+    try { parsed = JSON.parse(newRuleValue); } catch { /* keep string */ }
+    setDetectionRules((prev) => ({ ...prev, [k]: parsed }));
+    setNewRuleKey("");
+    setNewRuleValue("");
+  };
+
+  const setRedmineField = <K extends keyof RedmineSettings>(key: K, val: RedmineSettings[K]) =>
+    setRedmine((prev) => ({ ...prev, [key]: val }));
 
   useEffect(() => { document.title = "Settings — Middleware 1.0"; }, []);
 
   return (
     <div className="page-stack">
+      {/* Toast */}
+      {toast && <Toast message={toast.message} type={toast.type} />}
+
       {/* Header */}
       <div className="page-header">
         <div className="page-header-left">
           <p className="page-eyebrow">Configuration</p>
           <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Manage integrations, notifications, and system preferences</p>
-        </div>
-        <div className="page-actions">
-          <button className="button button--ghost" onClick={handleReset}>Reset Defaults</button>
-          <button className="button button--secondary" onClick={handleExport}>Export JSON</button>
-          <button className="button button--primary" onClick={handleSave}>
-            {saved ? "✓ Saved!" : "Save Settings"}
-          </button>
+          <p className="page-subtitle">Manage detection rules and integration settings</p>
         </div>
       </div>
 
-      {/* Wazuh */}
+      {/* ════════════════════════════════════════ */}
+      {/* SECTION A: Detection Rules              */}
+      {/* ════════════════════════════════════════ */}
       <Section
         iconBg="rgba(79,134,255,0.15)"
         icon={<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#4f86ff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
-        title="Wazuh"
-        desc="SIEM / security monitoring integration"
+        title="Security Detection Rules"
+        desc="Dynamic rule thresholds for the detection engine — changes apply in real-time"
       >
-        <div className="form-grid form-grid-2">
-          <Field label="Wazuh URL">
-            <input type="url" value={settings.wazuhUrl} onChange={(e) => set("wazuhUrl", e.target.value)} placeholder="https://wazuh.example.com" />
-          </Field>
-          <Field label="Username">
-            <input type="text" value={settings.wazuhUser} onChange={(e) => set("wazuhUser", e.target.value)} placeholder="admin" />
-          </Field>
-          <Field label="Password">
-            <PasswordField value={settings.wazuhPassword} onChange={(v) => set("wazuhPassword", v)} placeholder="••••••••" />
-          </Field>
-          <div style={{ display: "flex", alignItems: "flex-end" }}>
-            <TestBtn status={wazuhTest} onClick={() => fakeTest(setWazuhTest)} />
+        {detectionLoading ? (
+          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>Loading detection rules…</p>
+        ) : (
+          <div style={{ display: "grid", gap: "0.75rem" }}>
+            {/* Existing rules */}
+            {Object.entries(detectionRules).map(([key, value]) => (
+              <div key={key} className="rule-row">
+                <div className="rule-key">
+                  <span style={{ fontFamily: "monospace", fontSize: "0.82rem", fontWeight: 600, color: "var(--accent)" }}>
+                    {key}
+                  </span>
+                </div>
+                <div className="rule-value">
+                  <input
+                    type="text"
+                    value={typeof value === "object" ? JSON.stringify(value) : String(value)}
+                    onChange={(e) => updateRuleValue(key, e.target.value)}
+                    style={{ fontFamily: "monospace", fontSize: "0.82rem" }}
+                  />
+                </div>
+                <button
+                  className="button button--danger"
+                  onClick={() => deleteRule(key)}
+                  style={{ padding: "0.4rem 0.6rem", fontSize: "0.75rem" }}
+                  title={`Delete ${key}`}
+                >
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+
+            {/* Add new rule row */}
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: "0.75rem", marginTop: "0.25rem" }}>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
+                Add New Parameter
+              </p>
+              <div className="rule-row">
+                <div className="rule-key">
+                  <input
+                    type="text"
+                    placeholder="parameter_name"
+                    value={newRuleKey}
+                    onChange={(e) => setNewRuleKey(e.target.value)}
+                    style={{ fontFamily: "monospace", fontSize: "0.82rem" }}
+                  />
+                </div>
+                <div className="rule-value">
+                  <input
+                    type="text"
+                    placeholder='value (e.g. 5, [4444, 1337], "text")'
+                    value={newRuleValue}
+                    onChange={(e) => setNewRuleValue(e.target.value)}
+                    style={{ fontFamily: "monospace", fontSize: "0.82rem" }}
+                  />
+                </div>
+                <button
+                  className="button button--success"
+                  onClick={addRule}
+                  disabled={!newRuleKey.trim()}
+                  style={{ padding: "0.4rem 0.6rem", fontSize: "0.75rem" }}
+                >
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Save button */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+              <button className="button button--primary" onClick={handleSaveDetection} disabled={detectionSaving}>
+                {detectionSaving ? "Saving…" : "Save Detection Rules"}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </Section>
 
-      {/* DefectDojo */}
-      <Section
-        iconBg="rgba(124,92,252,0.15)"
-        icon={<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#7c5cfc" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
-        title="DefectDojo"
-        desc="Vulnerability management platform integration"
-      >
-        <div className="form-grid form-grid-2">
-          <Field label="DefectDojo URL">
-            <input type="url" value={settings.defectdojoUrl} onChange={(e) => set("defectdojoUrl", e.target.value)} placeholder="https://defectdojo.example.com" />
-          </Field>
-          <Field label="API Key" hint="Found under your profile → API v2 key">
-            <PasswordField value={settings.defectdojoApiKey} onChange={(v) => set("defectdojoApiKey", v)} placeholder="Token xxxxxxxxxxxxxxxx" />
-          </Field>
-          <Field label="Product ID">
-            <input type="number" value={settings.defectdojoProductId} onChange={(e) => set("defectdojoProductId", e.target.value)} placeholder="1" />
-          </Field>
-          <div style={{ display: "flex", alignItems: "flex-end" }}>
-            <TestBtn status={ddTest} onClick={() => fakeTest(setDdTest)} />
-          </div>
-        </div>
-      </Section>
-
-      {/* Redmine */}
+      {/* ════════════════════════════════════════ */}
+      {/* SECTION B: Redmine Integration           */}
+      {/* ════════════════════════════════════════ */}
       <Section
         iconBg="rgba(45,193,198,0.15)"
         icon={<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#2dc1c6" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>}
-        title="Redmine"
-        desc="Issue tracker and project management integration"
+        title="Redmine Integration"
+        desc="Global issue tracker configuration — used by all services to create tickets"
       >
-        <div className="form-grid form-grid-2">
-          <Field label="Redmine URL">
-            <input type="url" value={settings.redmineUrl} onChange={(e) => set("redmineUrl", e.target.value)} placeholder="https://redmine.example.com" />
-          </Field>
-          <Field label="API Key">
-            <PasswordField value={settings.redmineApiKey} onChange={(v) => set("redmineApiKey", v)} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
-          </Field>
-          <Field label="Project ID / Identifier">
-            <input type="text" value={settings.redmineProjectId} onChange={(e) => set("redmineProjectId", e.target.value)} placeholder="my-project" />
-          </Field>
-          <div style={{ display: "flex", alignItems: "flex-end" }}>
-            <TestBtn status={rmTest} onClick={() => fakeTest(setRmTest)} />
+        {redmineLoading ? (
+          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>Loading Redmine config…</p>
+        ) : (
+          <div style={{ display: "grid", gap: "0.75rem" }}>
+            <Toggle
+              label="Enable Redmine Integration"
+              desc="When enabled, security findings will automatically create Redmine issues"
+              checked={redmine.enabled}
+              onChange={() => setRedmineField("enabled", !redmine.enabled)}
+            />
+
+            <div className="form-grid form-grid-2" style={{ marginTop: "0.5rem" }}>
+              <Field label="Redmine URL" hint="Base URL of your Redmine instance">
+                <input
+                  type="url"
+                  value={redmine.url}
+                  onChange={(e) => setRedmineField("url", e.target.value)}
+                  placeholder="https://redmine.example.com"
+                />
+              </Field>
+              <Field label="API Key" hint="Found under My Account → API access key">
+                <PasswordField
+                  value={redmine.api_key}
+                  onChange={(v) => setRedmineField("api_key", v)}
+                  placeholder="your_api_key"
+                />
+              </Field>
+              <Field label="Project ID / Identifier" hint="Required when integration is enabled">
+                <input
+                  type="text"
+                  value={redmine.project_id}
+                  onChange={(e) => setRedmineField("project_id", e.target.value)}
+                  placeholder="project-name"
+                />
+              </Field>
+              <Field label="Tracker ID" hint="Numeric ID for the issue tracker type (optional)">
+                <input
+                  type="number"
+                  value={redmine.tracker_id ?? ""}
+                  onChange={(e) => setRedmineField("tracker_id", e.target.value ? Number(e.target.value) : null)}
+                  placeholder="1"
+                />
+              </Field>
+            </div>
+
+            {/* Save button */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+              <button className="button button--primary" onClick={handleSaveRedmine} disabled={redmineSaving}>
+                {redmineSaving ? "Saving…" : "Save Redmine Settings"}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </Section>
-
-      {/* General */}
-      <Section
-        iconBg="rgba(255,209,102,0.12)"
-        icon={<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#ffd166" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
-        title="General"
-        desc="System-wide preferences"
-      >
-        <div style={{ display: "grid", gap: "0.75rem" }}>
-          <Toggle label="Dark Mode" desc="Use dark color theme throughout the app" checked={settings.darkMode} onChange={() => toggle("darkMode")} />
-          <Toggle label="Auto Refresh" desc="Automatically refresh dashboard data every 60 seconds" checked={settings.autoRefresh} onChange={() => toggle("autoRefresh")} />
-          <div className="form-grid form-grid-2" style={{ marginTop: "0.5rem" }}>
-            <Field label="Language">
-              <select value={settings.language} onChange={(e) => set("language", e.target.value)}>
-                <option value="en">English</option>
-                <option value="th">Thai (ภาษาไทย)</option>
-                <option value="ja">Japanese (日本語)</option>
-              </select>
-            </Field>
-            <Field label="Timezone">
-              <select value={settings.timezone} onChange={(e) => set("timezone", e.target.value)}>
-                <option value="UTC">UTC</option>
-                <option value="UTC+7">UTC+7 (Bangkok)</option>
-                <option value="UTC+8">UTC+8 (Singapore)</option>
-                <option value="UTC+9">UTC+9 (Tokyo)</option>
-              </select>
-            </Field>
-          </div>
-        </div>
-      </Section>
-
-      {/* Notifications */}
-      <Section
-        iconBg="rgba(34,212,122,0.12)"
-        icon={<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#22d47a" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>}
-        title="Notifications"
-        desc="Alert channels for critical security events"
-      >
-        <div style={{ display: "grid", gap: "0.75rem" }}>
-          <Toggle label="Email Notifications" desc="Send alerts to email" checked={settings.emailNotif} onChange={() => toggle("emailNotif")} />
-          {settings.emailNotif && (
-            <Field label="Email Address">
-              <input type="email" value={settings.emailAddress} onChange={(e) => set("emailAddress", e.target.value)} placeholder="security@example.com" />
-            </Field>
-          )}
-
-          <Toggle label="Telegram Bot" desc="Push alerts to Telegram channel" checked={settings.telegramNotif} onChange={() => toggle("telegramNotif")} />
-          {settings.telegramNotif && (
-            <Field label="Bot Token" hint="From @BotFather — format: 123456:ABC-DEF…">
-              <PasswordField value={settings.telegramToken} onChange={(v) => set("telegramToken", v)} placeholder="123456789:ABCDEF..." />
-            </Field>
-          )}
-
-          <Toggle label="Slack Webhook" desc="Post alerts to Slack channel" checked={settings.slackNotif} onChange={() => toggle("slackNotif")} />
-          {settings.slackNotif && (
-            <Field label="Webhook URL">
-              <input type="url" value={settings.slackWebhook} onChange={(e) => set("slackWebhook", e.target.value)} placeholder="https://hooks.slack.com/services/..." />
-            </Field>
-          )}
-        </div>
-      </Section>
-
-      {/* Bottom Action Bar */}
-      <div className="panel" style={{ padding: "1rem 1.5rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
-            Settings are stored locally in your browser (localStorage)
-          </p>
-          <div className="page-actions">
-            <button className="button button--ghost" onClick={handleReset}>Reset Defaults</button>
-            <button className="button button--secondary" onClick={handleExport}>Export JSON</button>
-            <button className="button button--primary" onClick={handleSave}>
-              {saved ? "✓ Saved!" : "Save Settings"}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
