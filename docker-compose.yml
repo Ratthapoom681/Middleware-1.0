@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    environment:
+      DB_URL: postgresql+psycopg://app:app@db:5432/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    environment:
+      VITE_API_URL: /api
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+volumes:
+  postgres-data:
+
