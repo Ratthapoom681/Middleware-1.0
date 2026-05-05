@@ -6,60 +6,56 @@ import { ExportPdfButton } from "../../components/ExportPdfButton";
 
 /* ── Mock KPI ── */
 const kpis = [
-  { label: "Monthly Alerts", value: "1,204", delta: "+18% vs last month", deltaDir: "up" as const, color: "#4f86ff", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg> },
-  { label: "Closed Tickets", value: "640", delta: "+9% vs last month", deltaDir: "up" as const, color: "#22d47a", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
-  { label: "Avg Response Time", value: "4.2h", delta: "-11% faster", deltaDir: "down" as const, color: "#ffd166", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" /></svg> },
-  { label: "Resolved Findings", value: "87.3%", delta: "+2.1% resolution rate", deltaDir: "up" as const, color: "#7c5cfc", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
+  { label: "Monthly Alerts", value: "0", delta: "-", deltaDir: "neutral" as const, color: "#4f86ff", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg> },
+  { label: "Closed Tickets", value: "0", delta: "-", deltaDir: "neutral" as const, color: "#22d47a", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+  { label: "Avg Response Time", value: "-", delta: "-", deltaDir: "neutral" as const, color: "#ffd166", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" /></svg> },
+  { label: "Resolved Findings", value: "-", delta: "-", deltaDir: "neutral" as const, color: "#7c5cfc", icon: <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
 ];
 
 /* ── Monthly Trend data ── */
 const monthlyTrend = [
-  { month: "Jan", wazuh: 120, defectdojo: 80, redmine: 45 },
-  { month: "Feb", wazuh: 145, defectdojo: 95, redmine: 60 },
-  { month: "Mar", wazuh: 130, defectdojo: 110, redmine: 55 },
-  { month: "Apr", wazuh: 190, defectdojo: 125, redmine: 70 },
-  { month: "May", wazuh: 175, defectdojo: 140, redmine: 80 },
-  { month: "Jun", wazuh: 220, defectdojo: 155, redmine: 90 },
+  { month: "Jan", wazuh: 0, defectdojo: 0, redmine: 0 },
+  { month: "Feb", wazuh: 0, defectdojo: 0, redmine: 0 },
+  { month: "Mar", wazuh: 0, defectdojo: 0, redmine: 0 },
+  { month: "Apr", wazuh: 0, defectdojo: 0, redmine: 0 },
+  { month: "May", wazuh: 0, defectdojo: 0, redmine: 0 },
+  { month: "Jun", wazuh: 0, defectdojo: 0, redmine: 0 },
 ];
 
 /* ── Source comparison ── */
 const sources = [
-  { name: "Wazuh", alerts: 980, open: 200, closed: 780, color: "#4f86ff" },
-  { name: "DefectDojo", alerts: 705, open: 130, closed: 575, color: "#7c5cfc" },
-  { name: "Redmine", alerts: 400, open: 51, closed: 349, color: "#2dc1c6" },
+  { name: "Wazuh", alerts: 0, open: 0, closed: 0, color: "#4f86ff" },
+  { name: "DefectDojo", alerts: 0, open: 0, closed: 0, color: "#7c5cfc" },
+  { name: "Redmine", alerts: 0, open: 0, closed: 0, color: "#2dc1c6" },
 ];
 
 /* ── Aging data ── */
 const agingBuckets = [
-  { label: "< 1 day", value: 312, color: "#22d47a" },
-  { label: "1-3 days", value: 218, color: "#4f86ff" },
-  { label: "3-7 days", value: 145, color: "#ffd166" },
-  { label: "7-14 days", value: 89, color: "#ff8c42" },
-  { label: "> 14 days", value: 47, color: "#ff4d6a" },
+  { label: "< 1 day", value: 0, color: "#22d47a" },
+  { label: "1-3 days", value: 0, color: "#4f86ff" },
+  { label: "3-7 days", value: 0, color: "#ffd166" },
+  { label: "7-14 days", value: 0, color: "#ff8c42" },
+  { label: "> 14 days", value: 0, color: "#ff4d6a" },
 ];
 
 /* ── Team performance ── */
 const teamData = [
-  { name: "Team Alpha", resolved: 187, avg: "3.1h", score: 94 },
-  { name: "Team Beta", resolved: 142, avg: "4.7h", score: 81 },
-  { name: "Team Gamma", resolved: 203, avg: "2.8h", score: 97 },
-  { name: "Team Delta", resolved: 108, avg: "6.2h", score: 72 },
+  { name: "Team Alpha", resolved: 0, avg: "-", score: 0 },
+  { name: "Team Beta", resolved: 0, avg: "-", score: 0 },
+  { name: "Team Gamma", resolved: 0, avg: "-", score: 0 },
+  { name: "Team Delta", resolved: 0, avg: "-", score: 0 },
 ];
 
 /* ── Top issues ── */
 type Issue = { id: number; title: string; source: string; severity: string; age: string; owner: string; score: number };
-const topIssues: Issue[] = [
-  { id: 1, title: "Remote code execution via deserialization", source: "DefectDojo", severity: "critical", age: "18d", owner: "Team Gamma", score: 9.8 },
-  { id: 2, title: "Privilege escalation in sudo config", source: "Wazuh", severity: "critical", age: "12d", owner: "Team Alpha", score: 9.1 },
-  { id: 3, title: "Sensitive data exposure in error logs", source: "DefectDojo", severity: "high", age: "9d", owner: "Team Beta", score: 7.6 },
-  { id: 4, title: "Open redirect in auth flow", source: "Wazuh", severity: "high", age: "7d", owner: "Team Gamma", score: 7.2 },
-  { id: 5, title: "Outdated TLS cipher suites", source: "Redmine", severity: "medium", age: "21d", owner: "Team Delta", score: 5.9 },
-  { id: 6, title: "Missing rate limiting on /api/login", source: "DefectDojo", severity: "medium", age: "5d", owner: "Team Alpha", score: 5.4 },
-];
+const topIssues: Issue[] = [];
 
 /* ── Charts ── */
 function GroupedBarChart({ data }: { data: typeof monthlyTrend }) {
-  const max = Math.max(...data.flatMap((d) => [d.wazuh, d.defectdojo, d.redmine]));
+  const max = Math.max(
+    ...data.map((d) => d.wazuh + d.defectdojo + d.redmine),
+    1
+  );
   const colors = ["#4f86ff", "#7c5cfc", "#2dc1c6"];
   const keys = ["wazuh", "defectdojo", "redmine"] as const;
   return (

@@ -23,6 +23,16 @@ const navItems = [
     ),
   },
   {
+    label: "Live Logs",
+    to: "/logs",
+    icon: (
+      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+    badge: "LIVE",
+  },
+  {
     label: "Settings",
     to: "/settings",
     icon: (
@@ -71,7 +81,10 @@ export function Sidebar() {
       {navItems.map((item) => (
         <NavLink key={item.to} className={cls} to={item.to} end={item.to === "/"}>
           {item.icon}
-          {item.label}
+          <span style={{ flex: 1 }}>{item.label}</span>
+          {"badge" in item && item.badge && (
+            <span className="nav-badge">{item.badge}</span>
+          )}
         </NavLink>
       ))}
 
