@@ -19,13 +19,32 @@ async def lifespan(_: FastAPI):
     tables = list(Base.metadata.tables.keys())
     print(f"Registered tables in metadata: {tables}")
     
-    Base.metadata.create_all(bind=engine)
-    print("Database tables ensured.")
+    # Retry logic for database connection (essential for server deployments)
+    import time
+    max_retries = 5
+    retry_delay = 5
+    db_ready = False
     
-    db = SessionLocal()
+    for i in range(max_retries):
+        try:
+            Base.metadata.create_all(bind=engine)
+            print("Database connection successful. Tables ensured.")
+            db_ready = True
+            break
+        except Exception as e:
+            print(f"Database connection attempt {i+1} failed: {e}")
+            if i < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                print("Max retries reached. Could not connect to the database.")
+                raise
 
-    try:
-        seed_features(db)
+    if db_ready:
+        db = SessionLocal()
+        try:
+            seed_features(db)
+            # ... rest of the logic
 
         try:
             ensure_feature_index(es_client)
