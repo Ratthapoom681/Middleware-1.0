@@ -21,7 +21,7 @@ services:
     ports:
       - "9201:9200"
     volumes:
-      - ./data/elasticsearch:/usr/share/elasticsearch/data
+      - es_data:/usr/share/elasticsearch/data
 
   backend:
     image: python:3.12-slim
@@ -55,3 +55,6 @@ services:
     restart: always
     ports:
       - 8080:8080
+
+volumes:
+  es_data:

@@ -15,7 +15,13 @@ from app.services.index_service import reindex_features, reindex_wazuh_alerts
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Log registered tables for debugging
+    tables = list(Base.metadata.tables.keys())
+    print(f"Registered tables in metadata: {tables}")
+    
     Base.metadata.create_all(bind=engine)
+    print("Database tables ensured.")
+    
     db = SessionLocal()
 
     try:
