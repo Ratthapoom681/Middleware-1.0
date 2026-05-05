@@ -6,6 +6,7 @@ import { FeatureA } from "./pages/FeatureA";
 import { FeatureB } from "./pages/FeatureB";
 import { NotFound } from "./pages/NotFound";
 import { Search } from "./pages/Search";
+import { Settings } from "./pages/Settings";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
             <Route path="/search" element={<Search />} />
             <Route path="/feature-a" element={<FeatureA />} />
             <Route path="/feature-b" element={<FeatureB />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </section>

@@ -19,7 +19,7 @@ services:
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: -Xms512m -Xmx512m
     ports:
-      - "9200:9200"
+      - "9201:9200"
     volumes:
       - ./data/elasticsearch:/usr/share/elasticsearch/data
 
@@ -49,3 +49,9 @@ services:
     depends_on:
       - backend
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080

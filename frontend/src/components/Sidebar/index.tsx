@@ -26,6 +26,9 @@ export function Sidebar() {
         <NavLink className={navClassName} to="/feature-b">
           Feature B
         </NavLink>
+        <NavLink className={navClassName} to="/settings">
+          Settings
+        </NavLink>
       </nav>
     </aside>
   );

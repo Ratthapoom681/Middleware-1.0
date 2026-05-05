@@ -1,0 +1,191 @@
+from datetime import datetime, timedelta, timezone
+import logging
+from sqlalchemy.orm import Session
+from sqlalchemy import func, cast, String
+
+logger = logging.getLogger(__name__)
+
+from app.models.wazuh import WazuhAlert
+from app.models.config import DetectionConfig, RedmineConfig
+from app.models.detection import DetectionAlert
+from app.services.redmine_service import create_redmine_issue
+
+def evaluate_detections(db: Session, current_alert: WazuhAlert):
+    """
+    Evaluates the incoming WazuhAlert against the 4 configured detection use cases.
+    If a use case triggers, a DetectionAlert is created.
+    """
+    alerts_triggered = 0
+    
+    # Get detection config
+    config_row = db.query(DetectionConfig).first()
+    settings = config_row.settings if config_row else {}
+    
+    # Extract detection-specific settings with defaults
+    brute_force_timeframe_sec = settings.get("brute_force_timeframe_sec", 60)
+    brute_force_threshold = settings.get("brute_force_threshold", 5)
+    abnormal_ports = settings.get("abnormal_ports", [4444, 1337])
+    impossible_travel_timeframe_sec = settings.get("impossible_travel_timeframe_sec", 3600)
+    port_scan_timeframe_sec = settings.get("port_scan_timeframe_sec", 60)
+    port_scan_threshold = settings.get("port_scan_threshold", 10)
+        
+    payload = current_alert.full_payload
+    
+    # Safely extract fields
+    data = payload.get("data", {})
+    rule = payload.get("rule", {})
+    
+    srcip = data.get("srcip")
+    dstip = data.get("dstip")
+    dstport = data.get("dstport")
+    user = data.get("user")
+    
+    # Try to extract geoip country name
+    geoip = data.get("geoip", {})
+    country_name = geoip.get("country_name") if isinstance(geoip, dict) else None
+    
+    rule_desc = rule.get("description", "").lower()
+    
+    # Convert dstport to int if possible for comparison
+    try:
+        dstport_int = int(dstport) if dstport else None
+    except ValueError:
+        dstport_int = None
+        
+    current_time = current_alert.timestamp or datetime.now(timezone.utc)
+    
+    # --- 1. Brute Force / Excessive Login Failures ---
+    # Trigger condition: More than threshold failed attempts within timeframe from same srcip
+    is_failed_login = "fail" in rule_desc or "invalid" in rule_desc or data.get("status", "").lower() == "failed"
+    if srcip and is_failed_login:
+        time_limit = current_time - timedelta(seconds=brute_force_timeframe_sec)
+        
+        # Query count of previous failed logins from this IP within timeframe
+        # Using JSON operators to filter
+        count = db.query(WazuhAlert).filter(
+            WazuhAlert.timestamp >= time_limit,
+            WazuhAlert.timestamp < current_time,
+            cast(WazuhAlert.full_payload["data"]["srcip"], String) == srcip
+        ).count()
+        
+        # We add 1 for the current alert
+        if (count + 1) >= brute_force_threshold:
+            _create_alert(
+                db, 
+                title="Brute Force Login Detected",
+                description=f"Detected {count + 1} failed logins from {srcip} within {brute_force_timeframe_sec} seconds.",
+                use_case="Brute Force",
+                severity="high",
+                source_ip=srcip,
+                details={"srcip": srcip, "count": count + 1, "threshold": brute_force_threshold}
+            )
+            alerts_triggered += 1
+
+    # --- 2. Abnormal Network Connection ---
+    # Trigger condition: dstport in abnormal_ports list
+    if dstport_int is not None and dstport_int in abnormal_ports:
+        _create_alert(
+            db,
+            title="Abnormal Network Connection",
+            description=f"Connection detected to unusual port {dstport_int}.",
+            use_case="Abnormal Network Connection",
+            severity="critical",
+            source_ip=srcip,
+            details={"srcip": srcip, "dstip": dstip, "dstport": dstport_int, "protocol": data.get("protocol")}
+        )
+        alerts_triggered += 1
+
+    # --- 3. Impossible Travel ---
+    # Trigger condition: Same user logs in from two different countries within timeframe
+    is_successful_login = "success" in rule_desc or "logged in" in rule_desc or data.get("status", "").lower() == "success"
+    if user and country_name and is_successful_login:
+        time_limit = current_time - timedelta(seconds=impossible_travel_timeframe_sec)
+        
+        # Find previous successful logins for this user in a different country within timeframe
+        # Exclude the current country
+        previous_login = db.query(WazuhAlert).filter(
+            WazuhAlert.timestamp >= time_limit,
+            WazuhAlert.timestamp < current_time,
+            cast(WazuhAlert.full_payload["data"]["user"], String) == user,
+            cast(WazuhAlert.full_payload["data"]["geoip"]["country_name"], String) != country_name,
+            cast(WazuhAlert.full_payload["data"]["geoip"]["country_name"], String).isnot(None)
+        ).first()
+        
+        if previous_login:
+            prev_country = previous_login.full_payload.get("data", {}).get("geoip", {}).get("country_name")
+            _create_alert(
+                db,
+                title="Impossible Travel Detected",
+                description=f"User '{user}' logged in from {country_name} and previously from {prev_country} within {impossible_travel_timeframe_sec} seconds.",
+                use_case="Impossible Travel",
+                severity="high",
+                source_ip=srcip,
+                details={"user": user, "current_country": country_name, "previous_country": prev_country, "srcip": srcip}
+            )
+            alerts_triggered += 1
+
+    # --- 4. Port Scan Detection ---
+    # Trigger condition: Connections to multiple ports from same srcip within short timeframe
+    if srcip and dstport_int is not None:
+        time_limit = current_time - timedelta(seconds=port_scan_timeframe_sec)
+        
+        # Count distinct destination ports for this source IP within the timeframe
+        distinct_ports = db.query(func.count(func.distinct(cast(WazuhAlert.full_payload["data"]["dstport"], String)))).filter(
+            WazuhAlert.timestamp >= time_limit,
+            WazuhAlert.timestamp <= current_time,
+            cast(WazuhAlert.full_payload["data"]["srcip"], String) == srcip,
+            cast(WazuhAlert.full_payload["data"]["dstport"], String).isnot(None)
+        ).scalar() or 0
+        
+        if distinct_ports >= port_scan_threshold:
+            _create_alert(
+                db,
+                title="Port Scan Detected",
+                description=f"Source IP {srcip} connected to {distinct_ports} distinct ports within {port_scan_timeframe_sec} seconds.",
+                use_case="Port Scan",
+                severity="high",
+                source_ip=srcip,
+                details={"srcip": srcip, "distinct_ports": distinct_ports, "threshold": port_scan_threshold}
+            )
+            alerts_triggered += 1
+
+    if alerts_triggered == 0:
+        logger.info(f"Evaluated Wazuh alert {current_alert.id} against detection rules: No suspicious activity found.")
+    else:
+        logger.warning(f"Evaluated Wazuh alert {current_alert.id}: Triggered {alerts_triggered} detection(s)!")
+
+def _create_alert(db: Session, title: str, description: str, use_case: str, severity: str, source_ip: str, details: dict):
+    # Create the alert in our local database
+    new_alert = DetectionAlert(
+        title=title,
+        description=description,
+        use_case=use_case,
+        severity=severity,
+        source_ip=source_ip,
+        details=details
+    )
+    db.add(new_alert)
+    db.commit()
+    db.refresh(new_alert)
+
+    # Check for Redmine integration in separate config
+    redmine_config = db.query(RedmineConfig).first()
+    
+    if redmine_config and redmine_config.enabled:
+        # Prepare alert data for Redmine
+        alert_data = {
+            "title": title,
+            "description": description,
+            "use_case": use_case,
+            "severity": severity,
+            "source_ip": source_ip,
+            "details": details
+        }
+        # Convert model to dict for the service
+        config_dict = {
+            "redmine_url": redmine_config.url,
+            "redmine_api_key": redmine_config.api_key,
+            "redmine_project_id": redmine_config.project_id,
+            "redmine_tracker_id": redmine_config.tracker_id
+        }
+        create_redmine_issue(config_dict, alert_data)
