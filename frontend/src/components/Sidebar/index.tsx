@@ -32,6 +32,16 @@ const navItems = [
     ),
     badge: "LIVE",
   },
+  {
+    label: "Health",
+    to: "/health",
+    icon: (
+      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 4v5c0 4.418-2.93 7.793-7 9-4.07-1.207-7-4.582-7-9V7l7-4z" />
+      </svg>
+    ),
+  },
 ];
 
 const otherItems = [

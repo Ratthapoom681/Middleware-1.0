@@ -64,9 +64,12 @@ Accepts a raw JSON payload directly from the Wazuh integration. The backend stor
 ```json
 {
   "status": "success",
-  "id": 123
+  "id": 123,
+  "queued": ["index_wazuh_alert", "create_external_issue"]
 }
 ```
+
+The ingest endpoint now persists the alert first, then queues Elasticsearch indexing and any Redmine issue creation for the background worker. This keeps webhook response time decoupled from Elasticsearch or Redmine availability.
 
 ---
 
@@ -99,3 +102,36 @@ WAZUH_RETENTION_DAYS=90
 ```
 
 Set `WAZUH_RETENTION_DAYS=0` to disable automatic retention cleanup.
+
+---
+
+## 5. Sample Payloads and Demo Seeding
+
+Sample Wazuh payloads live in:
+
+```text
+backend/app/samples/wazuh/demo_alerts.json
+```
+
+The demo file includes failed SSH logins, an abnormal outbound port, and impossible-travel login examples.
+
+**List samples:** `GET /api/ingest/wazuh/samples`
+
+**Seed samples:** `POST /api/ingest/wazuh/demo-seed`
+
+Demo seeding is disabled by default. Enable it with:
+
+```env
+DEMO_MODE=true
+DEMO_SEED_ON_STARTUP=false
+```
+
+Set `DEMO_SEED_ON_STARTUP=true` to insert the sample alerts automatically only when the `wazuh_alerts` table is empty.
+
+---
+
+## 6. Health
+
+**Endpoint:** `GET /api/health`
+
+The health report covers database connectivity, Elasticsearch reachability, Wazuh ingest counts, Redmine configuration, and Wazuh index freshness. The frontend exposes the same report at `/health`.

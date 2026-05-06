@@ -5,7 +5,7 @@ interface LiveLogPanelProps {
   logs: LogEntry[];
   paused: boolean;
   userScrolled: boolean;
-  onScroll: () => void;
+  onScroll: (userScrolled: boolean) => void;
 }
 
 const LEVEL_META: Record<LogLevel, { color: string; bg: string; tag: string }> = {
@@ -16,6 +16,12 @@ const LEVEL_META: Record<LogLevel, { color: string; bg: string; tag: string }> =
 };
 
 const SOURCE_COLORS: Record<string, string> = {
+  API:        "#4f86ff",
+  Auth:       "#ffd166",
+  Audit:      "#2dc1c6",
+  Errors:     "#ff4d6a",
+  Frontend:   "#a07cff",
+  Jobs:       "#22d47a",
   Wazuh:      "#4f86ff",
   DefectDojo: "#7c5cfc",
   Redmine:    "#2dc1c6",
@@ -23,17 +29,25 @@ const SOURCE_COLORS: Record<string, string> = {
 };
 
 export function LiveLogPanel({ logs, paused, userScrolled, onScroll }: LiveLogPanelProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const linesRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll unless user scrolled up
   useEffect(() => {
-    if (!userScrolled && bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    const node = linesRef.current;
+    if (!userScrolled && node) {
+      node.scrollTop = node.scrollHeight;
     }
   }, [logs, userScrolled]);
 
+  const handleLinesScroll = () => {
+    const node = linesRef.current;
+    if (!node) return;
+
+    const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+    onScroll(distanceFromBottom > 24);
+  };
+
   return (
-    <div className="log-panel" onScroll={onScroll}>
+    <div className="log-panel">
       {/* Terminal header bar */}
       <div className="log-panel-topbar">
         <div className="terminal-dots">
@@ -51,7 +65,7 @@ export function LiveLogPanel({ logs, paused, userScrolled, onScroll }: LiveLogPa
       </div>
 
       {/* Log lines */}
-      <div className="log-lines">
+      <div className="log-lines" onScroll={handleLinesScroll} ref={linesRef}>
         {[...logs].reverse().map((entry) => {
           const meta = LEVEL_META[entry.level];
           return (
@@ -67,11 +81,19 @@ export function LiveLogPanel({ logs, paused, userScrolled, onScroll }: LiveLogPa
               <span className="log-level" style={{ color: meta.color }}>
                 [{meta.tag}]
               </span>
-              <span className="log-message">{entry.message}</span>
+              <span className="log-message">
+                <span className="log-message-text">{entry.message}</span>
+                {entry.path || entry.caller || entry.container ? (
+                  <span className="log-meta-row">
+                    {entry.path ? <span className="log-meta-chip">{entry.path}</span> : null}
+                    {entry.caller ? <span className="log-meta-chip">caller {entry.caller}</span> : null}
+                    {entry.container ? <span className="log-meta-chip log-meta-chip--container">api {entry.container}</span> : null}
+                  </span>
+                ) : null}
+              </span>
             </div>
           );
         })}
-        <div ref={bottomRef} />
       </div>
     </div>
   );

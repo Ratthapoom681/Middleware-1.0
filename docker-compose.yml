@@ -30,6 +30,9 @@ services:
       - ./backend:/app
     env_file:
       - .env
+    environment:
+      SERVICE_NAME: backend
+      CONTAINER_NAME: middleware-backend
     ports:
       - "8000:8000"
     depends_on:

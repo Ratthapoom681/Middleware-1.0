@@ -1,19 +1,18 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from elasticsearch import Elasticsearch
 from sqlalchemy.orm import Session
 
 from app.models.wazuh import WazuhAlert
-from app.services.index_service import sync_wazuh_alert
+from app.services.background_jobs import JOB_INDEX_WAZUH_ALERT, enqueue_worker_job
 from app.services.detection_service import evaluate_detections
 
 
-def create_wazuh_alert(db: Session, alert_payload: dict[str, Any], es: Optional[Elasticsearch] = None) -> WazuhAlert:
+def create_wazuh_alert(db: Session, alert_payload: dict[str, Any], es: Optional[object] = None) -> WazuhAlert:
     """
     Creates a new WazuhAlert record in the database.
     Extracts key fields for indexing while preserving the full original payload.
-    Synchronizes with Elasticsearch if a client is provided.
+    Queues Elasticsearch indexing for the background worker.
     Evaluates detections against the new alert.
     """
     # Extract timestamp
@@ -49,14 +48,12 @@ def create_wazuh_alert(db: Session, alert_payload: dict[str, Any], es: Optional[
     db.add(db_alert)
     db.commit()
     db.refresh(db_alert)
-    
-    # Sync to Elasticsearch
-    if es:
-        try:
-            sync_wazuh_alert(es, db_alert)
-        except Exception:
-            # We don't want to fail the whole ingestion if ES indexing fails
-            pass
+
+    try:
+        enqueue_worker_job(db, JOB_INDEX_WAZUH_ALERT, {"alert_id": db_alert.id})
+    except Exception as e:
+        # The alert is already stored; keep ingest available and surface the queue failure in logs.
+        print(f"Failed to queue Wazuh alert indexing: {e}")
             
     # Run detections
     try:

@@ -25,14 +25,18 @@ def create_detection_issue(
       "details": dict
     }
     """
-    issue = {
+    issue = build_detection_issue(detection)
+    return _send_issue(db, issue, create_external_issue=create_external_issue)
+
+
+def build_detection_issue(detection: dict[str, Any]) -> dict[str, Any]:
+    return {
         "source_type": "detection",
         "subject": f"[Detection] {detection.get('use_case')}: {detection.get('title')}",
         "severity": detection.get("severity"),
         "description": _format_detection_description(detection),
         "raw": detection,
     }
-    return _send_issue(db, issue, create_external_issue=create_external_issue)
 
 
 def create_defectdojo_issue(
@@ -47,15 +51,23 @@ def create_defectdojo_issue(
     DefectDojo findings usually describe vulnerabilities, products, endpoints,
     CWE/CVE metadata, and remediation guidance rather than event correlations.
     """
+    issue = build_defectdojo_issue(finding)
+    return _send_issue(db, issue, create_external_issue=create_external_issue)
+
+
+def build_defectdojo_issue(finding: dict[str, Any]) -> dict[str, Any]:
     title = finding.get("title") or finding.get("name") or "DefectDojo Finding"
-    issue = {
+    return {
         "source_type": "defectdojo",
         "subject": f"[DefectDojo] {title}",
         "severity": finding.get("severity"),
         "description": _format_defectdojo_description(finding),
         "raw": finding,
     }
-    return _send_issue(db, issue, create_external_issue=create_external_issue)
+
+
+def send_normalized_issue(db: Session, issue: dict[str, Any]) -> dict[str, Any] | None:
+    return _send_issue(db, issue, create_external_issue=True)
 
 
 def _send_issue(

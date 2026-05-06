@@ -29,6 +29,7 @@ Important files:
 - `frontend/src/App.tsx` defines the main layout and routes.
 - `frontend/src/styles.css` contains global app styling.
 - `frontend/src/services/api.ts` creates the shared Axios client.
+- `frontend/src/services/ops.service.ts` calls production-readiness endpoints.
 - `frontend/src/services/feature.service.ts` calls feature endpoints.
 - `frontend/src/services/search.service.ts` calls search endpoints.
 - `frontend/src/hooks/useFetch.ts` provides generic fetch state.
@@ -74,6 +75,9 @@ API prefixes:
 - `/api/health`
 - `/api/feature`
 - `/api/search`
+- `/api/config`
+- `/api/detections`
+- `/api/ops`
 
 ## Data Stores
 
@@ -108,6 +112,15 @@ ES_INDEX_SHARDS=1
 ES_INDEX_REPLICAS=0
 WAZUH_INDEX_PREFIX=wazuh-alerts
 WAZUH_RETENTION_DAYS=90
+AUTH_ENABLED=false
+API_KEY=replace-with-a-long-random-secret
+VITE_API_KEY=
+LOG_LEVEL=INFO
+SERVICE_NAME=backend
+AUDIT_RETENTION_DAYS=180
+APP_LOG_RETENTION_DAYS=30
+ERROR_RETENTION_DAYS=90
+BACKGROUND_JOB_INTERVAL_SEC=300
 ```
 
 For local backend execution outside Docker, use local service hostnames instead:
@@ -154,7 +167,16 @@ uvicorn main:app --reload
 5. Elasticsearch index setup runs.
 6. Feature records are reindexed for search.
 7. Wazuh alerts are reindexed into daily Elasticsearch indices and old daily indices are cleaned up according to `WAZUH_RETENTION_DAYS`.
-8. Frontend starts Vite and proxies `/api` requests to the backend.
+8. Operations maintenance starts in the background and writes job status to Postgres.
+9. Frontend starts Vite and proxies `/api` requests to the backend.
+
+## Production Readiness
+
+When `AUTH_ENABLED=true`, all `/api/*` routes except `/api/health` require `X-API-Key` or a bearer token matching `API_KEY`. The backend writes structured JSON logs to stdout, stores request audit events in `audit_events`, stores application logs in `app_logs`, captures unhandled backend and frontend errors in `error_events`, and records background maintenance runs in `job_runs`.
+
+The `/logs` frontend route reads `/api/ops/summary`, `/api/ops/logs`, `/api/ops/audit`, `/api/ops/errors`, and `/api/ops/jobs` to provide operational visibility.
+
+API and job logs include the backend runtime service/container. Upstream services can also send `X-Caller-Service` and `X-Caller-Container` headers so the Logs page can show which container initiated an API call.
 
 ## Git Notes
 

@@ -3,6 +3,13 @@ import { useLogStream } from "../../hooks/useLogStream";
 import { LiveLogPanel } from "../../components/LiveLogPanel";
 import { LogFilters } from "../../components/LogFilters";
 import type { LogLevel, LogSource } from "../../hooks/useLogStream";
+import {
+  enqueueMaintenanceJob,
+  getOperationsSummary,
+  listErrorEvents,
+  type ErrorEvent,
+  type OperationsSummary,
+} from "../../services/ops.service";
 
 /* ─── Stat card mini ─── */
 function LogStat({ label, value, color }: { label: string; value: number | string; color: string }) {
@@ -63,8 +70,41 @@ export function Logs() {
   const [sourceFilter, setSourceFilter] = useState<LogSource | "ALL">("ALL");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const [summary, setSummary] = useState<OperationsSummary | null>(null);
+  const [errorEvents, setErrorEvents] = useState<ErrorEvent[]>([]);
+  const [opsError, setOpsError] = useState<string | null>(null);
+  const [jobQueued, setJobQueued] = useState(false);
 
-  const { logs, addLog, clear } = useLogStream(paused);
+  const { logs, clear, error: streamError, loading, lastUpdated, refresh } = useLogStream(paused);
+
+  const loadOperations = useCallback(async (signal?: AbortSignal) => {
+    setOpsError(null);
+    try {
+      const [summaryRes, errorsRes] = await Promise.all([
+        getOperationsSummary(signal),
+        listErrorEvents(5, signal),
+      ]);
+      setSummary(summaryRes);
+      setErrorEvents(errorsRes);
+    } catch (err: unknown) {
+      if (signal?.aborted) return;
+      setOpsError(err instanceof Error ? err.message : "Failed to load operations health");
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadOperations(controller.signal);
+    return () => controller.abort();
+  }, [loadOperations]);
+
+  useEffect(() => {
+    if (paused) return;
+    const interval = window.setInterval(() => {
+      void loadOperations();
+    }, 10000);
+    return () => window.clearInterval(interval);
+  }, [loadOperations, paused]);
 
   // Sound on new CRITICAL
   const prevCritCount = useRef(0);
@@ -75,10 +115,10 @@ export function Logs() {
   }, [critCount, soundEnabled]);
 
   // Derived stats
-  const todayCount   = logs.length;
-  const warnCount    = useMemo(() => logs.filter((l) => l.level === "WARN").length, [logs]);
-  const errorCount   = useMemo(() => logs.filter((l) => l.level === "ERROR").length, [logs]);
-  const connSources  = useMemo(() => new Set(logs.map((l) => l.source)).size, [logs]);
+  const todayCount   = summary?.logs_24h ?? logs.length;
+  const warnCount    = summary?.level_counts.WARN ?? logs.filter((l) => l.level === "WARN").length;
+  const errorCount   = summary?.unresolved_errors ?? logs.filter((l) => l.level === "ERROR").length;
+  const auditCount   = summary?.audit_events_24h ?? 0;
 
   // Source distribution
   const sourceDist = useMemo(() => {
@@ -100,7 +140,9 @@ export function Logs() {
     return true;
   }), [logs, levelFilter, sourceFilter, search]);
 
-  const handleScroll = useCallback(() => setUserScrolled(true), []);
+  const handleScroll = useCallback((scrolledAwayFromLatest: boolean) => {
+    setUserScrolled(scrolledAwayFromLatest);
+  }, []);
 
   const exportTxt = () => downloadFile(
     filtered.map((l) => `[${l.time}] [${l.level}] [${l.source}] ${l.message}`).join("\n"),
@@ -112,19 +154,35 @@ export function Logs() {
   );
 
   const SOURCE_COLORS: Record<string, string> = {
+    API: "#4f86ff", Auth: "#ffd166", Audit: "#2dc1c6", Errors: "#ff4d6a", Frontend: "#a07cff", Jobs: "#22d47a",
     Wazuh: "#4f86ff", DefectDojo: "#7c5cfc", Redmine: "#2dc1c6", System: "#8da6c7"
   };
 
   const lastEvent = logs[0];
+  const visibleError = streamError ?? opsError;
+
+  const runMaintenance = async () => {
+    setJobQueued(true);
+    setOpsError(null);
+    try {
+      await enqueueMaintenanceJob();
+      await loadOperations();
+      await refresh(undefined, true);
+    } catch (err: unknown) {
+      setOpsError(err instanceof Error ? err.message : "Failed to queue maintenance job");
+    } finally {
+      setJobQueued(false);
+    }
+  };
 
   return (
     <div className={`logs-page ${fullscreen ? "logs-fullscreen" : ""}`}>
       {/* Header */}
       <div className="page-header">
         <div className="page-header-left">
-          <p className="page-eyebrow">Real-Time Monitoring</p>
-          <h1 className="page-title">Live Log Stream</h1>
-          <p className="page-subtitle">SOC console — live security event feed from all connected sources</p>
+          <p className="page-eyebrow">Production Readiness</p>
+          <h1 className="page-title">Operations Logs</h1>
+          <p className="page-subtitle">Auth, audit trail, API logs, error visibility, and background job status</p>
         </div>
         <div className="page-actions">
           <button
@@ -150,6 +208,12 @@ export function Logs() {
             </svg>
             Clear
           </button>
+          <button className="button button--secondary" onClick={() => { void refresh(undefined, true); void loadOperations(); }}>
+            Refresh
+          </button>
+          <button className="button button--ghost" onClick={runMaintenance} disabled={jobQueued}>
+            {jobQueued ? "Queued" : "Run Maintenance"}
+          </button>
           <button className="button button--ghost" onClick={() => setFullscreen((f) => !f)}>
             <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -161,11 +225,18 @@ export function Logs() {
 
       {/* Stat cards */}
       <div className="log-stats-row">
-        <LogStat label="Logs Today"        value={todayCount}  color="var(--accent)" />
-        <LogStat label="Critical Events"   value={critCount}   color="#ff4d6a" />
-        <LogStat label="Warnings"          value={warnCount}   color="#ffd166" />
-        <LogStat label="Connected Sources" value={connSources} color="#22d47a" />
+        <LogStat label="Logs 24h"           value={todayCount}  color="var(--accent)" />
+        <LogStat label="Audit Events 24h"   value={auditCount}  color="#2dc1c6" />
+        <LogStat label="Unresolved Errors"  value={errorCount}  color="#ff4d6a" />
+        <LogStat label="Warnings"           value={warnCount}   color="#ffd166" />
       </div>
+
+      {visibleError ? (
+        <div className="panel detection-error-panel">
+          <strong>Operations stream failed.</strong>
+          <span>{visibleError}</span>
+        </div>
+      ) : null}
 
       {/* Filters */}
       <LogFilters
@@ -227,7 +298,7 @@ export function Logs() {
               <div className="log-status-rows">
                 <div className="log-status-row">
                   <span className="log-status-dot" style={{ background: paused ? "#ffd166" : "#22d47a" }} />
-                  <span>{paused ? "Stream Paused" : "WebSocket Active"}</span>
+                  <span>{paused ? "Polling Paused" : "API Polling Active"}</span>
                 </div>
                 <div className="log-status-row" style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
                   <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -239,8 +310,25 @@ export function Logs() {
                   <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  ~{paused ? "0" : "1"} event/2s
+                  Last refresh: {lastUpdated ? lastUpdated.toLocaleTimeString("en-GB") : loading ? "Loading" : "—"}
                 </div>
+                <div className="log-status-row" style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
+                  <span className="log-status-dot" style={{ background: summary?.auth_enabled ? "#22d47a" : "#ffd166" }} />
+                  Auth: {summary?.auth_enabled ? "API key enforced" : "Development open mode"}
+                </div>
+              </div>
+            </div>
+
+            <div className="panel">
+              <p className="panel-title" style={{ marginBottom: "1rem" }}>Error Visibility</p>
+              <div className="ops-list">
+                {errorEvents.length ? errorEvents.map((event) => (
+                  <div className="ops-list-item" key={event.id}>
+                    <strong>{event.error_type}</strong>
+                    <span>{event.message}</span>
+                    <small>{formatDateTime(event.created_at)} · {event.path ?? "client/runtime"}</small>
+                  </div>
+                )) : <p className="panel-subtitle">No errors recorded.</p>}
               </div>
             </div>
 
@@ -279,4 +367,15 @@ export function Logs() {
       </div>
     </div>
   );
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }

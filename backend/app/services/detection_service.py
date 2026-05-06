@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 from app.models.wazuh import WazuhAlert
 from app.models.config import DetectionConfig
 from app.models.detection import DetectionAlert
-from app.services.issue_service import create_detection_issue
+from app.services.background_jobs import JOB_CREATE_EXTERNAL_ISSUE, enqueue_worker_job
+from app.services.issue_service import build_detection_issue
 
 
 def _nested_get(payload: dict[str, Any], *paths: str) -> Any:
@@ -427,18 +428,18 @@ def _create_alert(
     db.commit()
     db.refresh(new_alert)
 
-    create_detection_issue(
-        db,
-        {
-            "title": title,
-            "description": description,
-            "use_case": use_case,
-            "severity": severity,
-            "source_ip": source_ip,
-            "target": details.get("devname") or details.get("dstip"),
-            "details": details,
-        },
-        create_external_issue=create_external_issue,
-    )
+    if create_external_issue:
+        issue = build_detection_issue(
+            {
+                "title": title,
+                "description": description,
+                "use_case": use_case,
+                "severity": severity,
+                "source_ip": source_ip,
+                "target": details.get("devname") or details.get("dstip"),
+                "details": details,
+            }
+        )
+        enqueue_worker_job(db, JOB_CREATE_EXTERNAL_ISSUE, {"issue": issue, "detection_alert_id": new_alert.id})
 
     return True

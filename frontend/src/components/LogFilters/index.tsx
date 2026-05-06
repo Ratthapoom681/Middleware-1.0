@@ -11,7 +11,19 @@ interface LogFiltersProps {
 }
 
 const LEVELS: (LogLevel | "ALL")[] = ["ALL", "INFO", "WARN", "ERROR", "CRITICAL"];
-const SOURCES: (LogSource | "ALL")[] = ["ALL", "Wazuh", "DefectDojo", "Redmine", "System"];
+const SOURCES: (LogSource | "ALL")[] = [
+  "ALL",
+  "API",
+  "Auth",
+  "Audit",
+  "Errors",
+  "Jobs",
+  "Frontend",
+  "Wazuh",
+  "DefectDojo",
+  "Redmine",
+  "System",
+];
 
 const LEVEL_COLORS: Record<string, string> = {
   ALL:      "var(--text-secondary)",

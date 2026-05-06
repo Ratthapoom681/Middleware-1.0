@@ -21,6 +21,18 @@ class Settings(BaseSettings):
     es_index_replicas: int = 0
     wazuh_index_prefix: str = "wazuh-alerts"
     wazuh_retention_days: int = 90
+    auth_enabled: bool = False
+    api_key: str = ""
+    log_level: str = "INFO"
+    service_name: str = "backend"
+    audit_retention_days: int = 180
+    app_log_retention_days: int = 30
+    error_retention_days: int = 90
+    background_job_interval_sec: int = 300
+    ingest_worker_interval_sec: int = 5
+    ingest_worker_batch_size: int = 25
+    demo_mode: bool = False
+    demo_seed_on_startup: bool = False
 
     @property
     def cors_origins(self) -> list[str]:
