@@ -9,7 +9,7 @@ This app is a full-stack search-enabled React and FastAPI application. Docker Co
 | `frontend` | React 19, Vite 6, TypeScript | `5173` | Browser UI and client-side routing |
 | `backend` | FastAPI, Uvicorn, Python 3.12 | `8000` | REST API, CORS, application startup, search/index orchestration |
 | `db` | Postgres 16 Alpine | `5432` | Primary relational data store |
-| `elasticsearch` | Elasticsearch 8.17 | `9200` | Search index for feature records |
+| `elasticsearch` | Elasticsearch 8.17 | `9200` | Search indices for feature records and Wazuh alerts |
 
 ## Frontend
 
@@ -62,7 +62,7 @@ Important files:
 - `backend/app/db/postgres/session.py` creates the SQLAlchemy engine and session factory.
 - `backend/app/db/postgres/base.py` imports models for metadata/table creation.
 - `backend/app/db/elasticsearch/client.py` creates the Elasticsearch client.
-- `backend/app/db/elasticsearch/indices.py` defines and ensures the feature index.
+- `backend/app/db/elasticsearch/indices.py` defines and ensures the feature index plus the daily Wazuh alert index template.
 - `backend/app/routers/feature.py` exposes feature CRUD/read endpoints.
 - `backend/app/routers/search.py` exposes search endpoints.
 - `backend/app/services/feature_service.py` contains feature data logic.
@@ -77,9 +77,9 @@ API prefixes:
 
 ## Data Stores
 
-Postgres is the source of truth for feature records. SQLAlchemy models live under `backend/app/models/`.
+Postgres is the source of truth for feature records and Wazuh alerts. SQLAlchemy models live under `backend/app/models/`.
 
-Elasticsearch is the search index. The app creates or verifies the feature index on startup, then reindexes feature records from Postgres when Elasticsearch is available.
+Elasticsearch is the search layer. The app creates or verifies the feature index on startup, then reindexes feature records from Postgres when Elasticsearch is available. Wazuh alerts are stored in daily indices like `wazuh-alerts-2026.05.06` and searched through the `wazuh-alerts-*` pattern. A template applies mapping, shard, replica, refresh, and retention settings to new Wazuh indices.
 
 Local persistent data directories:
 
@@ -104,6 +104,10 @@ ES_URL=http://elasticsearch:9200
 POSTGRES_DB=app
 POSTGRES_USER=app
 POSTGRES_PASSWORD=app
+ES_INDEX_SHARDS=1
+ES_INDEX_REPLICAS=0
+WAZUH_INDEX_PREFIX=wazuh-alerts
+WAZUH_RETENTION_DAYS=90
 ```
 
 For local backend execution outside Docker, use local service hostnames instead:
@@ -149,7 +153,8 @@ uvicorn main:app --reload
 4. Seed feature data is inserted if needed.
 5. Elasticsearch index setup runs.
 6. Feature records are reindexed for search.
-7. Frontend starts Vite and proxies `/api` requests to the backend.
+7. Wazuh alerts are reindexed into daily Elasticsearch indices and old daily indices are cleaned up according to `WAZUH_RETENTION_DAYS`.
+8. Frontend starts Vite and proxies `/api` requests to the backend.
 
 ## Git Notes
 

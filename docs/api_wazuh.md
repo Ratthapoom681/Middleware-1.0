@@ -5,7 +5,7 @@ This document outlines the API endpoints available for the Wazuh Alert integrati
 ---
 
 ## 1. Search Wazuh Alerts
-This endpoint is used to query, search, and paginate through Wazuh alerts stored in Elasticsearch.
+This endpoint is used to query, search, and paginate through Wazuh alerts stored in Elasticsearch. Alerts are searched through the `wazuh-alerts-*` index pattern, while individual alerts are written into daily indices such as `wazuh-alerts-2026.05.06`.
 
 **Endpoint:** `POST /api/search/wazuh`
 
@@ -71,7 +71,7 @@ Accepts a raw JSON payload directly from the Wazuh integration. The backend stor
 ---
 
 ## 3. Manual Reindex
-If the Elasticsearch index ever falls out of sync with the PostgreSQL source-of-truth, this endpoint can be triggered to wipe and rebuild the Wazuh search index.
+If the Elasticsearch indices ever fall out of sync with the PostgreSQL source-of-truth, this endpoint can be triggered to wipe and rebuild the Wazuh search indices. Reindexing deletes the old `wazuh-alerts-*` indices and the legacy single `wazuh_alerts` index, then rebuilds daily indices from the alert timestamps.
 
 **Endpoint:** `POST /api/search/wazuh/reindex`
 
@@ -84,3 +84,18 @@ None
   "indexed": 42  // Number of alerts successfully re-indexed
 }
 ```
+
+## 4. Index Retention
+
+Wazuh alerts use daily Elasticsearch indices with a template-managed mapping, shard count, replica count, refresh interval, and optional lifecycle retention policy.
+
+Relevant backend environment variables:
+
+```env
+ES_INDEX_SHARDS=1
+ES_INDEX_REPLICAS=0
+WAZUH_INDEX_PREFIX=wazuh-alerts
+WAZUH_RETENTION_DAYS=90
+```
+
+Set `WAZUH_RETENTION_DAYS=0` to disable automatic retention cleanup.

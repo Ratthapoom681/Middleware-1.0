@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     postgres_user: str = "app"
     postgres_password: str = "app"
     frontend_url: str = "http://localhost:5173"
+    es_index_shards: int = 1
+    es_index_replicas: int = 0
+    wazuh_index_prefix: str = "wazuh-alerts"
+    wazuh_retention_days: int = 90
 
     @property
     def cors_origins(self) -> list[str]:

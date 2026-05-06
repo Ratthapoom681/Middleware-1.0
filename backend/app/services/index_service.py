@@ -1,7 +1,14 @@
 from elasticsearch import Elasticsearch
 from sqlalchemy.orm import Session
 
-from app.db.elasticsearch.indices import FEATURE_INDEX, WAZUH_INDEX, ensure_feature_index, ensure_wazuh_index
+from app.db.elasticsearch.indices import (
+    FEATURE_INDEX,
+    WAZUH_INDEX,
+    cleanup_wazuh_indices,
+    delete_wazuh_indices,
+    ensure_feature_index,
+    ensure_wazuh_index,
+)
 from app.models.feature import Feature
 from app.models.wazuh import WazuhAlert
 
@@ -52,22 +59,24 @@ def _serialise_wazuh_alert(alert: WazuhAlert) -> dict:
 
 
 def sync_wazuh_alert(es: Elasticsearch, alert: WazuhAlert) -> None:
-    ensure_wazuh_index(es)
-    es.index(index=WAZUH_INDEX, id=alert.id, document=_serialise_wazuh_alert(alert), refresh=True)
+    index_name = ensure_wazuh_index(es, alert.timestamp)
+    es.index(index=index_name, id=alert.id, document=_serialise_wazuh_alert(alert), refresh=True)
 
 
 def reindex_wazuh_alerts(db: Session, es: Elasticsearch) -> int:
     alerts = db.query(WazuhAlert).order_by(WazuhAlert.id.asc()).all()
 
-    if es.indices.exists(index=WAZUH_INDEX):
-        es.indices.delete(index=WAZUH_INDEX)
-
-    ensure_wazuh_index(es)
+    delete_wazuh_indices(es)
 
     for alert in alerts:
-        es.index(index=WAZUH_INDEX, id=alert.id, document=_serialise_wazuh_alert(alert))
+        index_name = ensure_wazuh_index(es, alert.timestamp)
+        es.index(index=index_name, id=alert.id, document=_serialise_wazuh_alert(alert))
 
     if alerts:
         es.indices.refresh(index=WAZUH_INDEX)
+    else:
+        ensure_wazuh_index(es)
+
+    cleanup_wazuh_indices(es)
 
     return len(alerts)

@@ -146,6 +146,7 @@ def search_wazuh_alerts(es: Elasticsearch, payload: SearchQuery) -> WazuhSearchR
         
         response = es.search(
             index=WAZUH_INDEX,
+            allow_no_indices=True,
             from_=(payload.page - 1) * payload.page_size,
             query={
                 "bool": {
