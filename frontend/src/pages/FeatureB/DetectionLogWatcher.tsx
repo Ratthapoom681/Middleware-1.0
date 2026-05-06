@@ -10,7 +10,6 @@ import {
 import { DataTable } from "../../components/DataTable";
 import {
   listDetectionAlerts,
-  reprocessDetectionHistory,
   type DetectionAlert,
 } from "../../services/detection.service";
 
@@ -71,14 +70,28 @@ function detailsSummary(alert: DetectionAlert) {
   const details = alert.details ?? {};
   const preferred = [
     ["srcip", detailText(details, "srcip") ?? alert.source_ip],
-    ["user", detailText(details, "user")],
+    ["target", targetLabel(alert)],
+    ["device", detailText(details, "devname")],
     ["dstip", detailText(details, "dstip")],
     ["dstport", detailText(details, "dstport")],
+    ["user", detailText(details, "user")],
     ["count", detailText(details, "failed_count") ?? detailText(details, "distinct_port_count")],
     ["country", detailText(details, "current_country")],
   ].filter(([, value]) => value);
 
   return preferred.slice(0, 4) as [string, string][];
+}
+
+function targetLabel(alert: DetectionAlert) {
+  const details = alert.details ?? {};
+  const devname = detailText(details, "devname");
+  const dstip = detailText(details, "dstip");
+  const dstport = detailText(details, "dstport");
+
+  if (devname && dstip && dstport) return `${devname} (${dstip}:${dstport})`;
+  if (devname && dstip) return `${devname} (${dstip})`;
+  if (dstip && dstport) return `${dstip}:${dstport}`;
+  return devname ?? dstip ?? "-";
 }
 
 function DetectionStat({ label, value, color }: { label: string; value: number | string; color: string }) {
@@ -121,6 +134,7 @@ function DetectionLine({
       </span>
       <div className="detection-log-message">
         <strong>{alert.title}</strong>
+        <span className="detection-target-line">Target: {targetLabel(alert)}</span>
         {alert.description ? <span>{alert.description}</span> : null}
         {summary.length ? (
           <div className="detection-pill-row">
@@ -162,8 +176,6 @@ export function DetectionLogWatcher() {
   const [refreshing, setRefreshing] = useState(false);
   const [live, setLive] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reprocessMessage, setReprocessMessage] = useState<string | null>(null);
-  const [reprocessing, setReprocessing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const latestSeenId = useRef<number | null>(null);
@@ -250,28 +262,6 @@ export function DetectionLogWatcher() {
 
   const latestAlert = items[0];
 
-  const handleReprocess = async () => {
-    const confirmed = window.confirm(
-      "Reprocess all stored Wazuh alerts on the server? Redmine issue creation stays disabled for this backfill.",
-    );
-    if (!confirmed) return;
-
-    setReprocessing(true);
-    setReprocessMessage(null);
-    try {
-      const res = await reprocessDetectionHistory();
-      setReprocessMessage(
-        `Backfill complete: processed ${res.processed} of ${res.available} stored alerts, created ${res.detections_created} detections.`,
-      );
-      await fetchDetections(undefined, true);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Reprocess failed";
-      setReprocessMessage(`Backfill failed: ${msg}`);
-    } finally {
-      setReprocessing(false);
-    }
-  };
-
   return (
     <div className="detection-watch">
       <div className="detection-watch-hero">
@@ -296,9 +286,6 @@ export function DetectionLogWatcher() {
           </button>
           <button className="button button--secondary" onClick={() => fetchDetections(undefined, true)}>
             {refreshing ? "Refreshing..." : "Refresh Now"}
-          </button>
-          <button className="button button--danger" onClick={handleReprocess} disabled={reprocessing}>
-            {reprocessing ? "Reprocessing..." : "Backfill Old Alerts"}
           </button>
           <button className="button button--ghost" onClick={() => exportJson(items)} disabled={!items.length}>
             Export Page
@@ -361,13 +348,6 @@ export function DetectionLogWatcher() {
         </div>
       ) : null}
 
-      {reprocessMessage ? (
-        <div className="panel detection-info-panel">
-          <strong>History reprocess</strong>
-          <span>{reprocessMessage}</span>
-        </div>
-      ) : null}
-
       <div className="detection-console-layout">
         <div className="log-panel detection-log-panel">
           <div className="log-panel-topbar">
@@ -411,6 +391,7 @@ export function DetectionLogWatcher() {
                 <span>{formatDateTime(latestAlert.timestamp)}</span>
                 <span>Use case: {latestAlert.use_case}</span>
                 <span>Source: {latestAlert.source_ip ?? "-"}</span>
+                <span>Target: {targetLabel(latestAlert)}</span>
               </div>
             ) : (
               <p className="panel-subtitle">No detection has matched this view yet.</p>
@@ -468,8 +449,13 @@ export function DetectionLogWatcher() {
             },
             {
               key: "source_ip",
-              label: "Source IP",
+              label: "Source",
               render: (alert) => <span className="detection-code">{alert.source_ip ?? "-"}</span>,
+            },
+            {
+              key: "target",
+              label: "Target",
+              render: (alert) => <span className="detection-code detection-target-code">{targetLabel(alert)}</span>,
             },
             {
               key: "title",

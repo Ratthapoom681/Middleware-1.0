@@ -1281,6 +1281,11 @@ textarea { resize: vertical; }
   overflow-wrap: anywhere;
 }
 
+.detection-target-line {
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
 .detection-pill-row {
   display: flex;
   flex-wrap: wrap;
@@ -1331,14 +1336,6 @@ textarea { resize: vertical; }
   gap: 0.6rem;
 }
 
-.detection-info-panel {
-  align-items: center;
-  border-color: rgba(45,193,198,0.28);
-  color: var(--accent-cyan);
-  display: flex;
-  gap: 0.6rem;
-}
-
 .detection-table-time {
   color: var(--text-secondary);
   font-size: 0.78rem;
@@ -1355,6 +1352,11 @@ textarea { resize: vertical; }
   color: var(--accent-cyan);
   font-family: 'Courier New', monospace;
   font-size: 0.78rem;
+}
+
+.detection-target-code {
+  max-width: 220px;
+  overflow-wrap: anywhere;
 }
 
 .detection-table-title {

@@ -6,7 +6,16 @@ logger = logging.getLogger(__name__)
 
 def create_redmine_issue(redmine_config: Dict[str, Any], alert_data: Dict[str, Any]):
     """
-    Creates an issue in Redmine based on the provided configuration and alert data.
+    Creates an issue in Redmine from a normalized issue document.
+
+    Expected issue document:
+    {
+      "subject": str,
+      "description": str,
+      "severity": str,
+      "source_type": str,
+      "raw": dict
+    }
     """
     url = redmine_config.get("redmine_url")
     api_key = redmine_config.get("redmine_api_key")
@@ -25,14 +34,8 @@ def create_redmine_issue(redmine_config: Dict[str, Any], alert_data: Dict[str, A
     issue_payload = {
         "issue": {
             "project_id": project_id,
-            "subject": f"[Security Alert] {alert_data.get('title')}",
-            "description": (
-                f"**Use Case:** {alert_data.get('use_case')}\n"
-                f"**Severity:** {alert_data.get('severity')}\n"
-                f"**Source IP:** {alert_data.get('source_ip')}\n\n"
-                f"**Description:**\n{alert_data.get('description')}\n\n"
-                f"**Details:**\n{alert_data.get('details')}"
-            ),
+            "subject": alert_data.get("subject") or "[Security Alert] Middleware finding",
+            "description": alert_data.get("description") or str(alert_data.get("raw") or {}),
             "priority_id": _map_severity_to_priority(alert_data.get("severity")),
         }
     }
@@ -48,7 +51,7 @@ def create_redmine_issue(redmine_config: Dict[str, Any], alert_data: Dict[str, A
     try:
         response = httpx.post(endpoint, json=issue_payload, headers=headers, timeout=10.0)
         response.raise_for_status()
-        logger.info(f"Successfully created Redmine issue for alert: {alert_data.get('title')}")
+        logger.info(f"Successfully created Redmine issue: {alert_data.get('subject')}")
         return response.json()
     except Exception as e:
         logger.error(f"Failed to create Redmine issue: {str(e)}")

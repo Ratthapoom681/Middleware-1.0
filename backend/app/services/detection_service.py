@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 from app.models.wazuh import WazuhAlert
-from app.models.config import DetectionConfig, RedmineConfig
+from app.models.config import DetectionConfig
 from app.models.detection import DetectionAlert
-from app.services.redmine_service import create_redmine_issue
+from app.services.issue_service import create_detection_issue
 
 
 def _nested_get(payload: dict[str, Any], *paths: str) -> Any:
@@ -90,6 +90,16 @@ def _extract_srcip(payload: dict[str, Any]) -> str | None:
 
 def _extract_dstip(payload: dict[str, Any]) -> str | None:
     value = _nested_get(payload, "data.dstip", "dstip")
+    return str(value).strip() if value else None
+
+
+def _extract_devname(payload: dict[str, Any]) -> str | None:
+    value = _nested_get(payload, "data.devname", "agent.name", "manager.name", "devname")
+    return str(value).strip() if value else None
+
+
+def _extract_devid(payload: dict[str, Any]) -> str | None:
+    value = _nested_get(payload, "data.devid", "agent.id", "devid")
     return str(value).strip() if value else None
 
 
@@ -200,6 +210,8 @@ def evaluate_detections(
     
     srcip = _extract_srcip(payload)
     dstip = _extract_dstip(payload)
+    devname = _extract_devname(payload)
+    devid = _extract_devid(payload)
     dstport_int = _extract_dstport(payload)
     user = _extract_user(payload)
     country_name = _extract_country(payload)
@@ -230,6 +242,9 @@ def evaluate_detections(
                 source_ip=srcip,
                 details={
                     "srcip": srcip,
+                    "dstip": dstip,
+                    "devname": devname,
+                    "devid": devid,
                     "user": user,
                     "failed_count": failed_count,
                     "threshold": brute_force_threshold,
@@ -254,6 +269,8 @@ def evaluate_detections(
             details={
                 "srcip": srcip,
                 "dstip": dstip,
+                "devname": devname,
+                "devid": devid,
                 "dstport": dstport_int,
                 "protocol": protocol,
                 "source_alert_id": current_alert.id,
@@ -297,6 +314,9 @@ def evaluate_detections(
                 details={
                     "user": user,
                     "srcip": srcip,
+                    "dstip": dstip,
+                    "devname": devname,
+                    "devid": devid,
                     "current_country": country_name,
                     "current_timestamp": current_time.isoformat(),
                     "previous_country": prev_country,
@@ -338,6 +358,8 @@ def evaluate_detections(
                 details={
                     "srcip": srcip,
                     "dstip": dstip,
+                    "devname": devname,
+                    "devid": devid,
                     "distinct_port_count": len(distinct_ports),
                     "sample_ports": sorted(distinct_ports)[:20],
                     "threshold": port_scan_threshold,
@@ -373,51 +395,6 @@ def _has_detection_for_source_alert(
     )
 
 
-def reprocess_wazuh_alert_history(
-    db: Session,
-    limit: int | None = None,
-    start_id: int | None = None,
-    create_external_issues: bool = False,
-) -> dict[str, int]:
-    """
-    Re-evaluate stored Wazuh alerts in chronological order.
-
-    Historical rows are not evaluated automatically when detection logic changes,
-    so this is used as an explicit backfill path. External ticket creation is
-    disabled by default to avoid flooding Redmine during bulk reprocessing.
-    """
-    query = db.query(WazuhAlert)
-    if start_id is not None:
-        query = query.filter(WazuhAlert.id >= start_id)
-
-    total_available = query.count()
-    id_query = query.with_entities(WazuhAlert.id).order_by(
-        WazuhAlert.timestamp.asc().nulls_last(),
-        WazuhAlert.id.asc(),
-    )
-    if limit is not None:
-        id_query = id_query.limit(limit)
-
-    alert_ids = [row[0] for row in id_query.all()]
-    detections_created = 0
-
-    for alert_id in alert_ids:
-        alert = db.get(WazuhAlert, alert_id)
-        if alert is None:
-            continue
-        detections_created += evaluate_detections(
-            db,
-            alert,
-            create_external_issue=create_external_issues,
-        )
-
-    return {
-        "available": total_available,
-        "processed": len(alert_ids),
-        "detections_created": detections_created,
-    }
-
-
 def _create_alert(
     db: Session,
     title: str,
@@ -450,26 +427,18 @@ def _create_alert(
     db.commit()
     db.refresh(new_alert)
 
-    # Check for Redmine integration in separate config
-    redmine_config = db.query(RedmineConfig).first()
-    
-    if create_external_issue and redmine_config and redmine_config.enabled:
-        # Prepare alert data for Redmine
-        alert_data = {
+    create_detection_issue(
+        db,
+        {
             "title": title,
             "description": description,
             "use_case": use_case,
             "severity": severity,
             "source_ip": source_ip,
-            "details": details
-        }
-        # Convert model to dict for the service
-        config_dict = {
-            "redmine_url": redmine_config.url,
-            "redmine_api_key": redmine_config.api_key,
-            "redmine_project_id": redmine_config.project_id,
-            "redmine_tracker_id": redmine_config.tracker_id
-        }
-        create_redmine_issue(config_dict, alert_data)
+            "target": details.get("devname") or details.get("dstip"),
+            "details": details,
+        },
+        create_external_issue=create_external_issue,
+    )
 
     return True

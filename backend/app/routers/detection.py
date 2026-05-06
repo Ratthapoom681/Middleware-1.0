@@ -1,28 +1,12 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, or_
+from sqlalchemy import String, cast, func, or_
 from sqlalchemy.orm import Session
 
 from app.dependencies.db import get_db
 from app.models.detection import DetectionAlert
 from app.schemas.detection import DetectionAlertRead, DetectionAlertsPage
-from app.services.detection_service import reprocess_wazuh_alert_history
 
 router = APIRouter()
-
-
-@router.post("/reprocess", response_model=dict[str, int])
-def reprocess_detection_history(
-    db: Session = Depends(get_db),
-    limit: int | None = Query(default=None, ge=1, le=50000),
-    start_id: int | None = Query(default=None, ge=1),
-    create_external_issues: bool = Query(default=False),
-) -> dict[str, int]:
-    return reprocess_wazuh_alert_history(
-        db,
-        limit=limit,
-        start_id=start_id,
-        create_external_issues=create_external_issues,
-    )
 
 
 @router.get("", response_model=DetectionAlertsPage)
@@ -51,6 +35,7 @@ def list_detection_alerts(
                 DetectionAlert.use_case.ilike(token),
                 DetectionAlert.severity.ilike(token),
                 DetectionAlert.source_ip.ilike(token),
+                cast(DetectionAlert.details, String).ilike(token),
             )
         )
 

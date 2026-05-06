@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DataTable } from "../../components/DataTable";
 import { StatCard } from "../../components/StatCard";
 import {
@@ -8,6 +9,12 @@ import {
 } from "../../services/wazuh.service";
 import { DetectionLogWatcher } from "./DetectionLogWatcher";
 import { WazuhSettings } from "./WazuhSettings";
+
+type FeatureBTab = "alerts" | "detections" | "settings";
+
+function isFeatureBTab(value: string | null): value is FeatureBTab {
+  return value === "alerts" || value === "detections" || value === "settings";
+}
 
 /* ── Level → badge class mapping ── */
 function levelBadge(level: number | null) {
@@ -48,7 +55,9 @@ function LogPreview({ text }: { text: string | null }) {
 
 export function FeatureB() {
   /* ── State ── */
-  const [activeTab, setActiveTab] = useState<"alerts" | "detections" | "settings">("alerts");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab: FeatureBTab = isFeatureBTab(tabParam) ? tabParam : "alerts";
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -114,6 +123,19 @@ export function FeatureB() {
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const setActiveTab = useCallback(
+    (tab: FeatureBTab) => {
+      const next = new URLSearchParams(searchParams);
+      if (tab === "alerts") {
+        next.delete("tab");
+      } else {
+        next.set("tab", tab);
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   useEffect(() => {
     document.title = "Wazuh Alerts — Middleware 1.0";
