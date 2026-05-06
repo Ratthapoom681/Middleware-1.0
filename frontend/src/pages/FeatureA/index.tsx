@@ -3,6 +3,10 @@ import "../../components/FeatureA/styles.css";
 import { DojoCharts } from "../../components/FeatureA/DojoCharts";
 import { FindingsTable } from "../../components/FeatureA/FindingsTable";
 import { ActivityLog, makeLog } from "../../components/FeatureA/ActivityLog";
+import { RedmineAutomationTab } from "../../components/FeatureA/RedmineAutomationTab";
+import { MappingRulesTab } from "../../components/FeatureA/MappingRulesTab";
+import { SchedulerTab } from "../../components/FeatureA/SchedulerTab";
+import { TicketAuditTab } from "../../components/FeatureA/TicketAuditTab";
 import type { LogEntry } from "../../components/FeatureA/ActivityLog";
 import {
   loadDojoConfig,
@@ -14,6 +18,7 @@ import {
   fetchTests,
   syncFindingsToPostgres,
   extractError,
+  fetchLocalFindings,
 } from "../../services/featureA.service";
 import type { DojoConfig, DojoFinding } from "../../services/featureA.service";
 
@@ -87,6 +92,7 @@ export function FeatureA() {
   const [findings, setFindings] = useState<DojoFinding[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("DefectDojo Sync");
 
   // UI Feedback States
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -272,6 +278,24 @@ export function FeatureA() {
     }
   }
 
+  async function handleLoadLocal() {
+    setBusy("load-local");
+    try {
+      addLog("INFO", "Loading local database data...");
+      const fData = await fetchLocalFindings();
+      setFindings(fData);
+      addLog("SUCCESS", `Loaded ${fData.length} findings from database`);
+      updateStatus("success", `🟢 Database loaded at ${new Date().toLocaleTimeString()}`);
+    } catch (e: unknown) {
+      const msg = extractError(e);
+      addLog("ERROR", `Load from DB failed: ${msg}`);
+      showToast("error", `❌ Database load failed: ${msg}`);
+      updateStatus("error", "🔴 Last Action: Load from DB failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function handleSyncAll() {
     if (!cfg.url || !cfg.apiKey) {
       showToast("error", "❌ Missing DefectDojo configuration");
@@ -313,16 +337,33 @@ export function FeatureA() {
     }
   }
 
-  // ── Auto Sync (run exactly once on mount) ───────────────────────────────────
+  // ── Initial Data Load (run exactly once on mount) ───────────────────────────
   useEffect(() => {
     if (hasAutoSynced.current) return;       // already ran
-    if (!cfg.autoSync) return;               // auto-sync disabled
     if (!cfg.url || !cfg.apiKey) return;     // no config yet
     hasAutoSynced.current = true;
-    addLog("INFO", "Auto-sync enabled — starting initial data fetch…");
-    handleSyncAll();
+    handleLoadLocal();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Background Real-Time Polling ────────────────────────────────────────────
+  useEffect(() => {
+    if (!cfg.autoSync || !cfg.url || !cfg.apiKey) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        // Silent background fetch
+        const fData = await fetchFindings(cfg);
+        setFindings(fData);
+        await syncFindingsToPostgres(fData, cfg.url);
+        updateStatus("success", `🟢 Real-time sync updated at ${new Date().toLocaleTimeString()}`);
+      } catch (e) {
+        console.error("Background sync failed:", e);
+      }
+    }, 60000); // Poll every 60 seconds
+
+    return () => clearInterval(intervalId);
+  }, [cfg]);
 
   // ── Export helpers ──────────────────────────────────────────────────────────
   function exportCSV() {
@@ -438,6 +479,21 @@ export function FeatureA() {
         </div>
       </div>
 
+      {/* ── Tabs Navigation ───────────────────────────────────────────── */}
+      <div className="dojo-tabs">
+        {["DefectDojo Sync", "Redmine Automation", "Mapping Rules", "Scheduler", "Ticket Audit"].map(tab => (
+          <button
+            key={tab}
+            className={`dojo-tab ${activeTab === tab ? "active" : ""}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "DefectDojo Sync" && (
+        <>
       {/* ── Section 1: Connection Settings ───────────────────────────── */}
       <div className="panel">
         <div className="panel-header">
@@ -555,6 +611,24 @@ export function FeatureA() {
 
       {/* ── Activity Log ──────────────────────────────────────────────── */}
       <ActivityLog logs={logs} onClear={() => setLogs([])} />
+        </>
+      )}
+
+      {activeTab === "Redmine Automation" && (
+        <RedmineAutomationTab addLog={addLog} showToast={showToast} updateStatus={updateStatus} />
+      )}
+
+      {activeTab === "Mapping Rules" && (
+        <MappingRulesTab showToast={showToast} />
+      )}
+
+      {activeTab === "Scheduler" && (
+        <SchedulerTab showToast={showToast} />
+      )}
+
+      {activeTab === "Ticket Audit" && (
+        <TicketAuditTab showToast={showToast} />
+      )}
 
     </div>
   );

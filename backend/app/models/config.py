@@ -24,7 +24,10 @@ class RedmineConfig(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    enable_automation: Mapped[bool] = mapped_column(Boolean, default=False)
     url: Mapped[str] = mapped_column(String(255), default="")
     api_key: Mapped[str] = mapped_column(String(255), default="")
     project_id: Mapped[str] = mapped_column(String(100), default="")
     tracker_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    default_assignee_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    auto_close_resolved_ticket: Mapped[bool] = mapped_column(Boolean, default=False)

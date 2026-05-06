@@ -1,7 +1,44 @@
 /* ─── Feature A / DefectDojo Center ── Additional Styles ─── */
 
 /* Connection Section */
-.dojo-page { display: grid; gap: 1.5rem; }
+.dojo-page {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: var(--font-family, system-ui, sans-serif);
+  color: var(--text-color, #1a202c);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dojo-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color, #e2e8f0);
+}
+
+.dojo-tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted, #718096);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.dojo-tab:hover {
+  color: var(--primary, #3182ce);
+}
+
+.dojo-tab.active {
+  color: var(--primary, #3182ce);
+  border-bottom: 3px solid var(--primary, #3182ce);
+}
 
 .dojo-hero {
   background: linear-gradient(135deg, rgba(16,27,52,0.97) 0%, rgba(10,18,40,0.98) 100%);

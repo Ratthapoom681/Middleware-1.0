@@ -53,7 +53,7 @@ async def proxy_dojo_request(request: Request):
 
     # ── Make request to DefectDojo ────────────────────────────────────────────
     try:
-        async with httpx.AsyncClient(verify=verify_ssl, timeout=20.0) as client:
+        async with httpx.AsyncClient(verify=verify_ssl, timeout=60.0) as client:
             resp = await client.get(url, params=params, headers=headers)
     except httpx.ConnectError:
         raise HTTPException(
@@ -109,10 +109,10 @@ def sync_findings(payload: BulkUpsertRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/findings", response_model=list[DojoFindingResponse])
-def get_findings(db: Session = Depends(get_db)):
-    """Return all synced findings from Postgres."""
+def get_findings(active: bool = True, db: Session = Depends(get_db)):
+    """Return synced findings from Postgres, filtered by active status."""
     try:
-        return list_findings(db)
+        return list_findings(db, active_only=active)
     except Exception as exc:
         logger.error("get_findings error: %s\n%s", exc, traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Database read failed: {exc}")

@@ -22,6 +22,8 @@ def create_redmine_issue(redmine_config: Dict[str, Any], alert_data: Dict[str, A
     endpoint = f"{url}/issues.json"
 
     # Construct the Redmine issue payload
+    priority_id = alert_data.get("priority_id") or _map_severity_to_priority(alert_data.get("severity"))
+    
     issue_payload = {
         "issue": {
             "project_id": project_id,
@@ -33,7 +35,7 @@ def create_redmine_issue(redmine_config: Dict[str, Any], alert_data: Dict[str, A
                 f"**Description:**\n{alert_data.get('description')}\n\n"
                 f"**Details:**\n{alert_data.get('details')}"
             ),
-            "priority_id": _map_severity_to_priority(alert_data.get("severity")),
+            "priority_id": priority_id,
         }
     }
     
@@ -67,3 +69,58 @@ def _map_severity_to_priority(severity: str) -> int:
     if severity == "medium":
         return 2
     return 1
+
+def get_redmine_priorities(url: str, api_key: str):
+    if not url or not api_key:
+        return []
+    url = url.rstrip("/")
+    endpoint = f"{url}/enumerations/issue_priorities.json"
+    headers = {"X-Redmine-API-Key": api_key}
+    try:
+        response = httpx.get(endpoint, headers=headers, timeout=10.0)
+        response.raise_for_status()
+        return response.json().get("issue_priorities", [])
+    except Exception as e:
+        logger.error(f"Failed to fetch Redmine priorities: {str(e)}")
+        return []
+
+def get_redmine_projects(url: str, api_key: str):
+    if not url or not api_key:
+        return []
+    url = url.rstrip("/")
+    endpoint = f"{url}/projects.json"
+    headers = {"X-Redmine-API-Key": api_key}
+    try:
+        response = httpx.get(endpoint, headers=headers, timeout=10.0)
+        response.raise_for_status()
+        return response.json().get("projects", [])
+    except Exception as e:
+        logger.error(f"Failed to fetch Redmine projects: {str(e)}")
+        return []
+
+def get_redmine_trackers(url: str, api_key: str):
+    if not url or not api_key:
+        return []
+    url = url.rstrip("/")
+    endpoint = f"{url}/trackers.json"
+    headers = {"X-Redmine-API-Key": api_key}
+    try:
+        response = httpx.get(endpoint, headers=headers, timeout=10.0)
+        response.raise_for_status()
+        return response.json().get("trackers", [])
+    except Exception as e:
+        logger.error(f"Failed to fetch Redmine trackers: {str(e)}")
+        return []
+
+def test_redmine_connection(url: str, api_key: str):
+    if not url or not api_key:
+        return {"status": "error", "message": "Missing credentials"}
+    url = url.rstrip("/")
+    endpoint = f"{url}/users/current.json"
+    headers = {"X-Redmine-API-Key": api_key}
+    try:
+        response = httpx.get(endpoint, headers=headers, timeout=10.0)
+        response.raise_for_status()
+        return {"status": "success", "message": "Connection successful"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

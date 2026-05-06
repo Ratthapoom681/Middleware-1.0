@@ -9,6 +9,10 @@ class DojoFindingUpsert(BaseModel):
     severity: str
     status: str
     cwe: int | None = None
+    cve: str | None = None
+    ip: str | None = None
+    port: int | None = None
+    cvss: float | None = None
     date: str | None = None
     active: bool = True
     verified: bool = False
@@ -23,6 +27,10 @@ class DojoFindingResponse(BaseModel):
     severity: str
     status: str
     cwe: int | None
+    cve: str | None
+    ip: str | None
+    port: int | None
+    cvss: float | None
     date: str | None
     active: bool
     verified: bool
@@ -35,3 +43,4 @@ class DojoFindingResponse(BaseModel):
 
 class BulkUpsertRequest(BaseModel):
     findings: list[DojoFindingUpsert]
+

@@ -17,6 +17,10 @@ def upsert_findings(db: Session, items: list[DojoFindingUpsert]) -> list[DojoFin
             existing.severity = item.severity
             existing.status = item.status
             existing.cwe = item.cwe
+            existing.cve = item.cve
+            existing.ip = item.ip
+            existing.port = item.port
+            existing.cvss = item.cvss
             existing.date = item.date
             existing.active = item.active
             existing.verified = item.verified
@@ -31,6 +35,10 @@ def upsert_findings(db: Session, items: list[DojoFindingUpsert]) -> list[DojoFin
                 severity=item.severity,
                 status=item.status,
                 cwe=item.cwe,
+                cve=item.cve,
+                ip=item.ip,
+                port=item.port,
+                cvss=item.cvss,
                 date=item.date,
                 active=item.active,
                 verified=item.verified,
@@ -48,5 +56,8 @@ def upsert_findings(db: Session, items: list[DojoFindingUpsert]) -> list[DojoFin
     return results
 
 
-def list_findings(db: Session) -> list[DojoFinding]:
-    return db.query(DojoFinding).order_by(DojoFinding.synced_at.desc()).all()
+def list_findings(db: Session, active_only: bool = True) -> list[DojoFinding]:
+    query = db.query(DojoFinding)
+    if active_only:
+        query = query.filter(DojoFinding.active == True)
+    return query.order_by(DojoFinding.synced_at.desc()).all()
