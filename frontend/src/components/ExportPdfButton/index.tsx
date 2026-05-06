@@ -34,7 +34,7 @@ export function ExportPdfButton({
   const generatePdf = async () => {
     setLoading(true);
     try {
-      const doc = jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 15;

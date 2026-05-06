@@ -3,7 +3,6 @@ import { Nav } from "./components/Nav";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./pages/Dashboard";
 import { Analytics } from "./pages/Analytics";
-import { Settings } from "./pages/Settings";
 import { Logs } from "./pages/Logs";
 import { FeatureA } from "./pages/FeatureA";
 import { FeatureB } from "./pages/FeatureB";
@@ -20,7 +19,6 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
-            <Route path="/settings" element={<Settings />} />
             <Route path="/logs" element={<Logs />} />
             <Route path="/search" element={<Search />} />
             <Route path="/feature-a" element={<FeatureA />} />

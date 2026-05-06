@@ -6,6 +6,7 @@ import {
   reindexWazuhAlerts,
   type WazuhAlert,
 } from "../../services/wazuh.service";
+import { DetectionLogWatcher } from "./DetectionLogWatcher";
 import { WazuhSettings } from "./WazuhSettings";
 
 /* ── Level → badge class mapping ── */
@@ -47,7 +48,7 @@ function LogPreview({ text }: { text: string | null }) {
 
 export function FeatureB() {
   /* ── State ── */
-  const [activeTab, setActiveTab] = useState<"alerts" | "settings">("alerts");
+  const [activeTab, setActiveTab] = useState<"alerts" | "detections" | "settings">("alerts");
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -126,7 +127,7 @@ export function FeatureB() {
           <p className="page-eyebrow">Security Intelligence</p>
           <h1 className="page-title">Wazuh Alerts & Settings</h1>
           <p className="page-subtitle">
-            Search, filter, and analyze Wazuh security alerts, and configure detection rules.
+            Search raw Wazuh alerts, watch generated detections, and tune detection rules.
           </p>
         </div>
         {activeTab === "alerts" && (
@@ -187,6 +188,13 @@ export function FeatureB() {
           Wazuh Alerts
         </button>
         <button
+          className={`button ${activeTab === "detections" ? "button--primary" : "button--ghost"}`}
+          onClick={() => setActiveTab("detections")}
+          style={{ borderRadius: "8px 8px 0 0", padding: "0.75rem 1.5rem", marginBottom: "-1px", borderBottom: activeTab === "detections" ? "2px solid var(--accent)" : "none", fontWeight: activeTab === "detections" ? 600 : 400 }}
+        >
+          Detection Watch
+        </button>
+        <button
           className={`button ${activeTab === "settings" ? "button--primary" : "button--ghost"}`}
           onClick={() => setActiveTab("settings")}
           style={{ borderRadius: "8px 8px 0 0", padding: "0.75rem 1.5rem", marginBottom: "-1px", borderBottom: activeTab === "settings" ? "2px solid var(--accent)" : "none", fontWeight: activeTab === "settings" ? 600 : 400 }}
@@ -197,6 +205,8 @@ export function FeatureB() {
 
       {activeTab === "settings" ? (
         <WazuhSettings />
+      ) : activeTab === "detections" ? (
+        <DetectionLogWatcher />
       ) : (
         <>
           {/* Reindex toast */}
