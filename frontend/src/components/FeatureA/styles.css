@@ -1,0 +1,450 @@
+/* ─── Feature A / DefectDojo Center ── Additional Styles ─── */
+
+/* Connection Section */
+.dojo-page { display: grid; gap: 1.5rem; }
+
+.dojo-hero {
+  background: linear-gradient(135deg, rgba(16,27,52,0.97) 0%, rgba(10,18,40,0.98) 100%);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1.75rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.dojo-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 260px; height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(79,134,255,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.dojo-hero-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dojo-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(79,134,255,0.1);
+  border: 1px solid rgba(79,134,255,0.25);
+  border-radius: 99px;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.dojo-hero-badge::before {
+  content: '';
+  background: var(--accent);
+  border-radius: 50%;
+  height: 6px;
+  width: 6px;
+  animation: pulse-green 2s infinite;
+}
+
+.dojo-hero-title {
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.dojo-hero-sub {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-top: 0.3rem;
+}
+
+/* Connection Status Badge */
+.conn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: 1px solid;
+}
+.conn-status.ok   { background: rgba(34,212,122,0.1); border-color: rgba(34,212,122,0.25); color: var(--accent-green); }
+.conn-status.err  { background: rgba(255,77,106,0.1); border-color: rgba(255,77,106,0.25); color: var(--accent-red); }
+.conn-status.idle { background: rgba(79,134,255,0.08); border-color: var(--border); color: var(--text-muted); }
+.conn-status::before {
+  content: '';
+  border-radius: 50%;
+  height: 7px;
+  width: 7px;
+  background: currentColor;
+}
+.conn-status.ok::before { animation: pulse-green 2s infinite; }
+
+/* Config form grid */
+.dojo-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 1000px) { .dojo-config-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px)  { .dojo-config-grid { grid-template-columns: 1fr; } }
+
+.dojo-config-toggles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+@media (max-width: 640px) { .dojo-config-toggles { grid-template-columns: 1fr; } }
+
+.dojo-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+/* Action bar */
+.dojo-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+/* Summary cards */
+.dojo-summary-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+@media (max-width: 1200px) { .dojo-summary-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px)  { .dojo-summary-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.dojo-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.1rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 200ms, transform 200ms;
+  cursor: default;
+}
+.dojo-stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--stat-color, var(--accent)) 0%, transparent 100%);
+}
+.dojo-stat:hover { border-color: var(--border-bright); transform: translateY(-2px); }
+.dojo-stat-label { color: var(--text-secondary); font-size: 0.72rem; font-weight: 500; letter-spacing: 0.03em; margin-bottom: 0.25rem; }
+.dojo-stat-value { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+
+/* Charts grid */
+.dojo-charts-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr 2fr;
+}
+@media (max-width: 900px) { .dojo-charts-grid { grid-template-columns: 1fr; } }
+
+/* Findings table controls */
+.dojo-table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dojo-search {
+  flex: 1;
+  min-width: 180px;
+  background: rgba(8,15,30,0.8);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.dojo-select {
+  background: rgba(8,15,30,0.8);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.8rem;
+  width: auto;
+}
+
+/* Sortable table header */
+.dojo-th-sort {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.dojo-th-sort:hover { color: var(--text-primary); }
+.sort-arrow { margin-left: 4px; opacity: 0.5; font-size: 0.65rem; }
+.sort-arrow.active { opacity: 1; color: var(--accent); }
+
+/* Pagination */
+.dojo-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.dojo-pagination-btns { display: flex; gap: 0.3rem; }
+.dojo-page-btn {
+  background: rgba(79,134,255,0.08);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  transition: background 150ms;
+}
+.dojo-page-btn:hover:not(:disabled) { background: rgba(79,134,255,0.18); }
+.dojo-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.dojo-page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Activity Log */
+.dojo-log-panel {
+  background: rgba(4,10,22,0.9);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.dojo-log-header {
+  align-items: center;
+  background: rgba(8,15,30,0.6);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 0.6rem;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+}
+.dojo-log-title { font-size: 0.875rem; font-weight: 700; }
+.dojo-log-body {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.76rem;
+  height: 200px;
+  overflow-y: auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.dojo-log-body::-webkit-scrollbar { width: 4px; }
+.dojo-log-body::-webkit-scrollbar-track { background: transparent; }
+.dojo-log-body::-webkit-scrollbar-thumb { background: rgba(79,134,255,0.3); border-radius: 4px; }
+
+.log-line { display: flex; gap: 0.5rem; line-height: 1.45; }
+.log-ts { color: var(--text-muted); flex-shrink: 0; }
+.log-level-info { color: var(--accent-cyan); font-weight: 600; }
+.log-level-error { color: var(--accent-red); font-weight: 600; }
+.log-level-warn { color: var(--accent-yellow); font-weight: 600; }
+.log-level-success { color: var(--accent-green); font-weight: 600; }
+.log-msg { color: var(--text-secondary); }
+
+/* Export bar */
+.dojo-export-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+/* Severity badges in table */
+.sev-critical { background: rgba(255,77,106,0.15); color: #ff4d6a; border: 1px solid rgba(255,77,106,0.3); border-radius: 6px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 8px; text-transform: uppercase; }
+.sev-high     { background: rgba(255,140,66,0.15); color: #ff8c42; border: 1px solid rgba(255,140,66,0.3); border-radius: 6px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 8px; text-transform: uppercase; }
+.sev-medium   { background: rgba(255,209,102,0.15); color: #ffd166; border: 1px solid rgba(255,209,102,0.3); border-radius: 6px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 8px; text-transform: uppercase; }
+.sev-low      { background: rgba(34,212,122,0.12); color: #22d47a; border: 1px solid rgba(34,212,122,0.25); border-radius: 6px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 8px; text-transform: uppercase; }
+.sev-info     { background: rgba(79,134,255,0.12); color: #4f86ff; border: 1px solid rgba(79,134,255,0.25); border-radius: 6px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 8px; text-transform: uppercase; }
+
+.bool-yes { color: var(--accent-green); font-weight: 600; font-size: 0.75rem; }
+.bool-no  { color: var(--text-muted);   font-weight: 500; font-size: 0.75rem; }
+
+/* Pie chart SVG */
+.dojo-pie-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.dojo-pie-legend {
+  display: grid;
+  gap: 0.4rem;
+  width: 100%;
+}
+.dojo-pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+.dojo-pie-dot {
+  border-radius: 50%;
+  flex-shrink: 0;
+  height: 10px;
+  width: 10px;
+}
+
+/* Line chart */
+.dojo-line-wrap { width: 100%; overflow: hidden; }
+.dojo-line-svg  { display: block; width: 100%; }
+
+/* Empty state */
+.dojo-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 3rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* ─── Feedback UI ─── */
+
+/* Spinner */
+@keyframes dojo-spin {
+  to { transform: rotate(360deg); }
+}
+.dojo-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: dojo-spin 0.75s linear infinite;
+  vertical-align: text-bottom;
+}
+
+/* Toast Notification */
+@keyframes dojo-toast-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes dojo-toast-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+.dojo-toast-container {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dojo-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(16,27,52,0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-width: 280px;
+  max-width: 400px;
+  animation: dojo-toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.dojo-toast.closing {
+  animation: dojo-toast-out 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.dojo-toast.success {
+  border-color: rgba(34,212,122,0.3);
+}
+.dojo-toast.error {
+  border-color: rgba(255,77,106,0.3);
+}
+.dojo-toast.info {
+  border-color: rgba(79,134,255,0.3);
+}
+.dojo-toast-icon {
+  font-size: 1.1rem;
+}
+
+/* Status Banner */
+.dojo-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  border: 1px solid;
+}
+.dojo-status-banner.success {
+  background: rgba(34,212,122,0.1);
+  border-color: rgba(34,212,122,0.25);
+  color: var(--accent-green);
+}
+.dojo-status-banner.error {
+  background: rgba(255,77,106,0.1);
+  border-color: rgba(255,77,106,0.25);
+  color: var(--accent-red);
+}
+.dojo-status-banner.processing {
+  background: rgba(255,209,102,0.1);
+  border-color: rgba(255,209,102,0.25);
+  color: var(--accent-yellow);
+}
+
+/* Progress Indicator */
+.dojo-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(8,15,30,0.4);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.dojo-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.dojo-progress-bar {
+  height: 6px;
+  background: rgba(79,134,255,0.15);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.dojo-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%);
+  transition: width 0.3s ease;
+}
