@@ -6,7 +6,7 @@
   max-width: 1400px;
   margin: 0 auto;
   font-family: var(--font-family, system-ui, sans-serif);
-  color: var(--text-color, #1a202c);
+  color: var(--text-primary, #e8f0ff);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -26,18 +26,18 @@
   border-bottom: 3px solid transparent;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-muted, #718096);
+  color: var(--text-secondary, #8da6c7);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 }
 
 .dojo-tab:hover {
-  color: var(--primary, #3182ce);
+  color: var(--text-primary, #e8f0ff);
 }
 
 .dojo-tab.active {
-  color: var(--primary, #3182ce);
-  border-bottom: 3px solid var(--primary, #3182ce);
+  color: var(--accent, #4f86ff);
+  border-bottom: 3px solid var(--accent, #4f86ff);
 }
 
 .dojo-hero {
@@ -97,10 +97,12 @@
   font-weight: 800;
   letter-spacing: -0.025em;
   line-height: 1.2;
+  color: var(--text-primary, #e8f0ff);
+  text-shadow: 0 1px 12px rgba(8, 15, 30, 0.35);
 }
 
 .dojo-hero-sub {
-  color: var(--text-secondary);
+  color: #b7c9e6;
   font-size: 0.875rem;
   margin-top: 0.3rem;
 }
@@ -118,7 +120,7 @@
 }
 .conn-status.ok   { background: rgba(34,212,122,0.1); border-color: rgba(34,212,122,0.25); color: var(--accent-green); }
 .conn-status.err  { background: rgba(255,77,106,0.1); border-color: rgba(255,77,106,0.25); color: var(--accent-red); }
-.conn-status.idle { background: rgba(79,134,255,0.08); border-color: var(--border); color: var(--text-muted); }
+.conn-status.idle { background: rgba(79,134,255,0.08); border-color: var(--border); color: var(--text-secondary); }
 .conn-status::before {
   content: '';
   border-radius: 50%;
